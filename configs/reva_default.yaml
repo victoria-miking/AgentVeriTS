@@ -1,0 +1,31 @@
+screening:
+  scales: [224, 448, 672]
+  step_ratio: 4.0
+  image_size: 224
+  patch_size: 16
+  top_k: 16
+  retained_references: 4
+  aggregate_top_fraction: 0.25
+  alpha: 0.01
+  alpha_candidates: [0.1, 0.01, 0.001]
+  smoothing: true
+  encoder_name: ViT-B-16
+  encoder_weights: openai
+  batch_size: 20
+  device: auto
+reasoning:
+  model: gpt-5.6-sol
+  reasoning_effort: medium
+  max_output_tokens: 5000
+  confidence_threshold: 0.75
+  max_evidence_calls: 3
+  context_points: 256
+  reference_count: 4
+  store_responses: true
+render:
+  global_width_px: 4096
+  global_height_px: 512
+  dpi: 100
+  candidate_color: "#d97706"
+  line_color: "#334155"
+  focus_color: "#2563eb"
