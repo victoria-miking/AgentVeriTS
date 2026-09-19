@@ -101,9 +101,10 @@ class GlobalHypothesisBuilder:
             candidate_id = row.get("candidate_id")
             reviewed = _interval(row["reviewed_interval"])
             final = None if row["final_interval"] is None else _interval(row["final_interval"])
-            confidence = int(row["confidence"])
-            if confidence not in {1, 2, 3}:
-                raise ValueError("confidence must be one of {1,2,3}")
+            confidence_raw = row["confidence"]
+            if type(confidence_raw) is not int or confidence_raw not in {1, 2, 3}:
+                raise ValueError("confidence must be an integer in {1,2,3}")
+            confidence = confidence_raw
             if reviewed.end >= signal_length or (final is not None and final.end >= signal_length):
                 raise ValueError("global decision exceeds signal bounds")
             if source == "candidate":

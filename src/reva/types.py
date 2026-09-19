@@ -42,8 +42,8 @@ class GlobalDecision:
     rationale: str
 
     def __post_init__(self) -> None:
-        if int(self.confidence) not in {1, 2, 3}:
-            raise ValueError("confidence must be one of {1,2,3}")
+        if type(self.confidence) is not int or self.confidence not in {1, 2, 3}:
+            raise ValueError("confidence must be an integer in {1,2,3}")
 
     def as_dict(self) -> dict[str, Any]:
         out = asdict(self)
@@ -83,8 +83,8 @@ class EvidenceDecision:
     evidence_log: list[dict[str, Any]] = field(default_factory=list)
 
     def __post_init__(self) -> None:
-        if int(self.confidence) not in {1, 2, 3}:
-            raise ValueError("confidence must be one of {1,2,3}")
+        if type(self.confidence) is not int or self.confidence not in {1, 2, 3}:
+            raise ValueError("confidence must be an integer in {1,2,3}")
 
     def as_dict(self) -> dict[str, Any]:
         return {
@@ -106,8 +106,8 @@ class AgentDiscovery:
     evidence_log: list[dict[str, Any]] = field(default_factory=list)
 
     def __post_init__(self) -> None:
-        if int(self.confidence) not in {2, 3}:
-            raise ValueError("final global-rescan discoveries must have confidence 2 or 3")
+        if type(self.confidence) is not int or self.confidence not in {2, 3}:
+            raise ValueError("final global-rescan discoveries must have integer confidence 2 or 3")
 
     def as_dict(self) -> dict[str, Any]:
         return {

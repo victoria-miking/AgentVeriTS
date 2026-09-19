@@ -148,9 +148,10 @@ class EvidenceAgent:
             final_action = str(action["final_action"])
             final_interval_raw = action["final_interval"]
             final_interval = None if final_interval_raw is None else Interval(int(final_interval_raw[0]), int(final_interval_raw[1]))
-            confidence = int(action["confidence"])
-            if confidence not in {1, 2, 3}:
-                raise ValueError("evidence confidence must be one of {1,2,3}")
+            confidence_raw = action["confidence"]
+            if type(confidence_raw) is not int or confidence_raw not in {1, 2, 3}:
+                raise ValueError("evidence confidence must be an integer in {1,2,3}")
+            confidence = confidence_raw
             if final_interval is not None and final_interval.end >= self.signal_length:
                 raise ValueError("evidence decision exceeds signal bounds")
             if final_action == "remove" and final_interval is not None:
@@ -244,9 +245,10 @@ class EvidenceAgent:
                 interval = Interval(int(row["interval"][0]), int(row["interval"][1]))
                 if interval.end >= self.signal_length:
                     raise ValueError("global rescan discovery exceeds signal bounds")
-                confidence = int(row["confidence"])
-                if confidence not in {2, 3}:
-                    raise ValueError("global-rescan discoveries require confidence 2 or 3")
+                confidence_raw = row["confidence"]
+                if type(confidence_raw) is not int or confidence_raw not in {2, 3}:
+                    raise ValueError("global-rescan discoveries require integer confidence 2 or 3")
+                confidence = confidence_raw
                 discoveries.append(AgentDiscovery(
                     discovery_id=discovery_id,
                     interval=interval,

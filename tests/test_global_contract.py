@@ -57,7 +57,7 @@ class GlobalContractTest(unittest.TestCase):
         class Fractional(FakeClient):
             def complete(self, **kwargs):
                 reply = super().complete(**kwargs)
-                reply.payload["decisions"][0]["confidence"] = 0.9
+                reply.payload["decisions"][0]["confidence"] = 2.5
                 return reply
         with self.assertRaises(ValueError):
             GlobalHypothesisBuilder(Fractional()).run(
