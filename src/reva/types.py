@@ -120,11 +120,28 @@ class AgentDiscovery:
 
 
 @dataclass
+class ScaleReferenceTrace:
+    scale: int
+    window_starts: list[int]
+    retained_reference_starts: list[list[int]]
+
+    def as_dict(self) -> dict[str, Any]:
+        return {
+            "scale": int(self.scale),
+            "window_starts": [int(x) for x in self.window_starts],
+            "retained_reference_starts": [
+                [int(x) for x in row] for row in self.retained_reference_starts
+            ],
+        }
+
+
+@dataclass
 class ScreeningResult:
     scores: list[float]
     candidate_sets: dict[str, list[VisualCandidate]]
     selected_alpha: float
     selected_candidates: list[VisualCandidate]
+    reference_traces: dict[int, ScaleReferenceTrace] = field(default_factory=dict)
 
 
 @dataclass

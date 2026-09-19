@@ -33,7 +33,7 @@ For a global `add` item, verified `keep` accepts the addition, `remove` rejects 
 
 After all confidence-1/2 decisions have been verified, the same evidence agent performs one additional global search over the full sequence.
 
-This rescan is allowed to discover anomalies still missed by both the visual screening stage and the first global hypothesis. The agent can revisit the global plot and call local, statistical, raw-value, reference, scale, or spike tools around newly suspected regions.
+This rescan is allowed to discover anomalies still missed by both the visual screening stage and the first global hypothesis. The agent can revisit the global plot and call local, statistical, raw-value, reference, scale, or spike tools around newly suspected regions. The reference tool first reuses the robust visual references retained by Stage-I for the nearest matching screening window, with raw-shape retrieval used only as a fallback when no retained reference is available.
 
 Only evidence-supported discoveries with confidence `2` or `3` are emitted as new intervals. A remaining confidence-1 suspicion is not added to the final result.
 

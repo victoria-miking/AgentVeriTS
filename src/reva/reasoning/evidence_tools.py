@@ -6,7 +6,7 @@ from typing import Any, Sequence
 
 import numpy as np
 
-from ..types import GlobalDecision, Interval
+from ..types import GlobalDecision, Interval, ScaleReferenceTrace
 from ..visual.render import SeriesRenderer
 
 
@@ -31,6 +31,7 @@ class EvidenceTools:
         global_image: str | Path,
         context_points: int = 256,
         reference_count: int = 4,
+        reference_traces: dict[int, ScaleReferenceTrace] | None = None,
     ) -> None:
         self.values = np.asarray(values, dtype=float).reshape(-1)
         self.output_dir = Path(output_dir)
@@ -39,6 +40,7 @@ class EvidenceTools:
         self.global_image = str(global_image)
         self.context_points = int(context_points)
         self.reference_count = int(reference_count)
+        self.reference_traces = dict(reference_traces or {})
 
     @staticmethod
     def _robust_stats(x: np.ndarray) -> dict[str, float]:
@@ -141,23 +143,97 @@ class EvidenceTools:
         chosen = rows[: max(0, int(count))]
         return [x[1] for x in chosen], [x[0] for x in chosen]
 
+    def _screening_reference_intervals(
+        self,
+        target: Interval,
+        count: int,
+    ) -> tuple[Interval | None, list[Interval], int | None]:
+        if not self.reference_traces:
+            return None, [], None
+        target_length = target.end - target.start + 1
+        scale = min(self.reference_traces, key=lambda value: abs(int(value) - int(target_length)))
+        trace = self.reference_traces[int(scale)]
+        if not trace.window_starts:
+            return None, [], int(scale)
+        target_center = (target.start + target.end) / 2.0
+        starts = np.asarray(trace.window_starts, dtype=np.int64)
+        centers = starts.astype(float) + (int(scale) - 1) / 2.0
+        query_index = int(np.argmin(np.abs(centers - target_center)))
+        query_start = int(starts[query_index])
+        query_end = min(len(self.values) - 1, query_start + int(scale) - 1)
+        query_window = Interval(query_start, query_end)
+        rows = trace.retained_reference_starts[query_index] if query_index < len(trace.retained_reference_starts) else []
+        refs = [
+            Interval(int(start), min(len(self.values) - 1, int(start) + int(scale) - 1))
+            for start in rows[: max(0, int(count))]
+        ]
+        return query_window, refs, int(scale)
+
     def reference_context(self, decision: GlobalDecision, args: dict[str, Any]) -> ToolObservation:
-        query = self._focus(decision)
+        target = self._focus(decision)
         count = int(args.get("count", self.reference_count))
-        refs, similarities = self._reference_intervals(query, count)
-        path = self.output_dir / f"{decision.decision_id}_references.png"
+        query_window, refs, scale = self._screening_reference_intervals(target, count)
+        context_points = int(args.get("context_points", min(self.context_points, 128)))
+        shared_y = bool(args.get("shared_y", True))
+        images: list[str] = []
+
+        if query_window is not None and refs:
+            target_path = self.output_dir / f"{decision.decision_id}_reference_target.png"
+            comparison_path = self.output_dir / f"{decision.decision_id}_references.png"
+            self.renderer.local_plot(
+                self.values,
+                target,
+                target_path,
+                context_points=context_points,
+                local_y=False,
+            )
+            self.renderer.comparison_plot(
+                self.values,
+                query_window,
+                refs,
+                comparison_path,
+                context_points=context_points,
+                shared_y=shared_y,
+            )
+            images = [str(target_path), str(comparison_path)]
+            data = {
+                "target_interval": target.as_list(),
+                "screening_scale": int(scale),
+                "screening_query_window": query_window.as_list(),
+                "references": [r.as_list() for r in refs],
+                "reference_source": "stage1_retained_visual_references",
+                "warning": "These references were retained by visual screening. Similarity and retention do not establish normality.",
+            }
+            return ToolObservation(
+                "reference_context",
+                "Reused the robust reference windows retained by visual screening for the nearest matching screening window.",
+                data,
+                images,
+            )
+
+        refs, similarities = self._reference_intervals(target, count)
+        path = self.output_dir / f"{decision.decision_id}_references_fallback.png"
         self.renderer.comparison_plot(
-            self.values, query, refs, path,
-            context_points=int(args.get("context_points", min(self.context_points, 128))),
-            shared_y=bool(args.get("shared_y", True)),
+            self.values,
+            target,
+            refs,
+            path,
+            context_points=context_points,
+            shared_y=shared_y,
         )
         data = {
-            "query": query.as_list(),
+            "target_interval": target.as_list(),
             "references": [r.as_list() for r in refs],
             "shape_cosine_similarity": similarities,
-            "warning": "Similarity is retrieval evidence only; it does not establish normality.",
+            "reference_source": "fallback_raw_shape_retrieval",
+            "warning": "Fallback retrieval was used because no retained screening references were available. Similarity does not establish normality.",
         }
-        return ToolObservation("reference_context", "Retrieved non-overlapping shape-similar intervals with surrounding context.", data, [str(path)])
+        return ToolObservation(
+            "reference_context",
+            "No retained screening references were available; used non-overlapping raw-shape retrieval as a fallback.",
+            data,
+            [str(path)],
+        )
 
     def spike_scan(self, decision: GlobalDecision, args: dict[str, Any]) -> ToolObservation:
         interval = self._focus(decision)

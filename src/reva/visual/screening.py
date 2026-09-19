@@ -10,7 +10,7 @@ import torch.nn.functional as F
 from scipy.stats import norm
 
 from ..config import ScreeningConfig
-from ..types import Interval, ScreeningResult, VisualCandidate
+from ..types import Interval, ScaleReferenceTrace, ScreeningResult, VisualCandidate
 from .encoder import VisualEncoder
 from .render import preprocess_series, render_window_tensor
 
@@ -137,6 +137,8 @@ def detection_intervals(scores: np.ndarray, alpha: float, smoothing: bool = True
 class ScaleResult:
     scale: int
     scores: np.ndarray
+    window_starts: np.ndarray
+    retained_reference_starts: list[list[int]]
 
 
 class VisualScreening:
@@ -182,6 +184,7 @@ class VisualScreening:
         patch_scores: list[np.ndarray] = []
         mid_scores: list[np.ndarray] = []
         large_scores: list[np.ndarray] = []
+        retained_reference_starts: list[list[int]] = []
         norm_classes = F.normalize(class_tokens, dim=-1)
         for qi in range(len(starts)):
             valid_np = _non_overlap(starts, qi, scale)
@@ -190,10 +193,15 @@ class VisualScreening:
                 patch_scores.append(np.zeros(patch.shape[1], dtype=np.float32))
                 mid_scores.append(np.zeros(mid.shape[1], dtype=np.float32))
                 large_scores.append(np.zeros(large.shape[1], dtype=np.float32))
+                retained_reference_starts.append([])
                 continue
             sims = torch.matmul(norm_classes.index_select(0, valid), norm_classes[qi])
             refs = valid.index_select(0, _stable_topk(sims, self.config.top_k))
-            patch_scores.append(_patch_bank_distance(patch[qi], patch.index_select(0, refs), self.config.retained_references).detach().cpu().numpy())
+            patch_ref_bank = patch.index_select(0, refs)
+            patch_keep = _retained_indices(patch_ref_bank, self.config.retained_references)
+            retained_ids = refs.index_select(0, patch_keep)
+            retained_reference_starts.append([int(starts[int(idx)]) for idx in retained_ids.detach().cpu().tolist()])
+            patch_scores.append(_patch_bank_distance(patch[qi], patch_ref_bank, self.config.retained_references).detach().cpu().numpy())
             mid_scores.append(_patch_bank_distance(mid[qi], mid.index_select(0, refs), self.config.retained_references).detach().cpu().numpy())
             large_scores.append(_patch_bank_distance(large[qi], large.index_select(0, refs), self.config.retained_references).detach().cpu().numpy())
         p = torch.from_numpy(np.stack(patch_scores)).to(device)
@@ -207,13 +215,28 @@ class VisualScreening:
         dense = F.interpolate(fused_map.unsqueeze(1).float(), size=(self.config.image_size, self.config.image_size), mode="bilinear").squeeze(1)
         stitched = _stitch_image_vectors(dense.detach().cpu().numpy(), self.config.step_ratio, self.config.aggregate_top_fraction)
         aligned = _align(stitched, len(values), scale, step, len(starts))
-        return ScaleResult(scale=scale, scores=aligned)
+        return ScaleResult(
+            scale=scale,
+            scores=aligned,
+            window_starts=starts.copy(),
+            retained_reference_starts=retained_reference_starts,
+        )
 
     def run(self, raw_values: Sequence[float]) -> ScreeningResult:
         values = preprocess_series(raw_values)
         per_scale = [self._score_scale(values, int(scale)) for scale in self.config.scales]
         normalized = [robust_positive_z(x.scores) for x in per_scale]
         fused = np.mean(np.stack(normalized), axis=0)
+        reference_traces = {
+            int(item.scale): ScaleReferenceTrace(
+                scale=int(item.scale),
+                window_starts=[int(x) for x in item.window_starts.tolist()],
+                retained_reference_starts=[
+                    [int(x) for x in row] for row in item.retained_reference_starts
+                ],
+            )
+            for item in per_scale
+        }
         candidate_sets: dict[str, list[VisualCandidate]] = {}
         selected: list[VisualCandidate] = []
         for alpha in self.config.alpha_candidates:
@@ -242,4 +265,5 @@ class VisualScreening:
             candidate_sets=candidate_sets,
             selected_alpha=float(self.config.alpha),
             selected_candidates=selected,
+            reference_traces=reference_traces,
         )

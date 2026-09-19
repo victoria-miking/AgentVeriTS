@@ -99,8 +99,10 @@ def evidence_tool_block() -> str:
 AVAILABLE EVIDENCE TOOLS
 - global_context: revisit the full-series plot.
 - local_context: inspect a target interval with surrounding raw context.
-- reference_context: retrieve non-overlapping, shape-similar intervals from the same series and
-  render query/reference context together; similarity does not imply normality.
+- reference_context: reuse the robust visual reference windows retained by the screening stage for
+  the nearest matching query window and render query/reference context together. If no retained
+  references exist, use non-overlapping raw-shape retrieval only as a fallback. A retained or
+  similar reference is not automatically normal.
 - raw_segment: inspect raw numeric samples and first differences around a target interval.
 - stat_features: compare robust statistics inside a target interval against surrounding context.
 - scale_view: replot a target interval using either local y-range or global/shared y-range.

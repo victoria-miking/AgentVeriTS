@@ -86,6 +86,10 @@ class REVAPipeline:
                     ]
                     for alpha, rows in screening_result.candidate_sets.items()
                 },
+                "reference_traces": {
+                    str(scale): trace.as_dict()
+                    for scale, trace in screening_result.reference_traces.items()
+                },
             },
         )
 
@@ -119,6 +123,7 @@ class REVAPipeline:
             global_image=global_image,
             context_points=self.config.reasoning.context_points,
             reference_count=self.config.reasoning.reference_count,
+            reference_traces=screening_result.reference_traces,
         )
         agent = EvidenceAgent(
             self.reasoning_client,

@@ -115,9 +115,9 @@ Added regions use `source: "added"`, `candidate_id: null`, and `action: "add"`.
 
 ## Evidence tools
 
-The evidence agent exposes seven read-only tools: `global_context`, `local_context`, `reference_context`, `raw_segment`, `stat_features`, `scale_view`, and `spike_scan`. Tool calls are adaptive rather than a fixed sequence.
+The evidence agent exposes seven read-only tools: `global_context`, `local_context`, `reference_context`, `raw_segment`, `stat_features`, `scale_view`, and `spike_scan`. Tool calls are adaptive rather than a fixed sequence. `reference_context` reuses the robust visual reference windows retained during screening whenever they are available, preserving the Stage-I→Agent evidence path.
 
-Historical similarity is retrieval evidence only. A similar historical window is not automatically normal.
+Historical similarity and reference retention are retrieval evidence only. A retained or similar historical window is not automatically normal.
 
 ## Reproducibility defaults
 
