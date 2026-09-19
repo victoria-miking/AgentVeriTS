@@ -15,7 +15,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--config", default=None, help="YAML config; defaults to package settings")
     parser.add_argument("--output-dir", default="outputs/reva")
     parser.add_argument("--alpha", type=float, default=None, help="override visual-screening alpha without labels")
-    parser.add_argument("--confidence-threshold", type=float, default=None, help="only decisions below this value enter evidence verification")
     parser.add_argument("--model", default=None)
     return parser
 
@@ -25,8 +24,6 @@ def main() -> None:
     config = REVAConfig.from_yaml(args.config) if args.config else REVAConfig()
     if args.alpha is not None:
         config.screening.alpha = float(args.alpha)
-    if args.confidence_threshold is not None:
-        config.reasoning.confidence_threshold = float(args.confidence_threshold)
     if args.model is not None:
         config.reasoning.model = str(args.model)
     values, _ = load_signal_csv(args.input)

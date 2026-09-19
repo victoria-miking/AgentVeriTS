@@ -32,10 +32,15 @@ morphology for this sequence. Use trend, periodicity, repeated motifs, regime ch
 amplitude, local continuity, and neighboring context. Do not assume every spike is anomalous and
 do not assume repeated shapes are normal without considering their context.
 
-For every decision output a confidence in [0,1]. Confidence is confidence in the ACTION and its
-boundaries, not merely confidence that the region looks unusual. Use lower confidence when the
-global image alone cannot reliably resolve the decision. Those uncertain items will later receive
-additional evidence. Do not inflate confidence to avoid verification.
+Every decision MUST use the discrete confidence scale below:
+1 = LOW confidence. The case is ambiguous or the deviation is very subtle; roughly 50%-70% confidence.
+2 = MEDIUM confidence. Local abnormality is reasonably visible, but the global interpretation remains uncertain; roughly 70%-95% confidence.
+3 = HIGH confidence. Strong statistical or contextual evidence supports the action; confidence is above roughly 95%.
+
+These percentages are calibration guides rather than exact probabilities. Confidence measures
+confidence in the ACTION and its boundaries, not merely confidence that the region looks unusual.
+Do not inflate confidence to avoid evidence verification. Confidence 1 and 2 will be sent to the
+evidence agent; confidence 3 will be closed directly.
 
 For an original candidate, preserve its candidate_id exactly. For an added region, use source
 "added", candidate_id null, action "add", and assign a unique decision_id such as A0001.
@@ -50,45 +55,56 @@ Never use hidden labels, benchmark annotations, or evaluation results.
 EVIDENCE_SYSTEM_PROMPT = r"""
 You are the Evidence Verification module in REVA.
 
-The full-series global hypothesis has already been formed. You are given ONLY an uncertain
-interval-level decision whose confidence fell below the verification threshold. High-confidence
-items are not your task.
+You have two responsibilities inside one continuous signal-level reasoning session:
 
-Your job is not to restart detection and not to scan the whole sequence for new anomalies. Your
-job is to resolve this one uncertainty by actively acquiring the minimum useful evidence.
+A. UNCERTAINTY VERIFICATION
+You receive global decisions with confidence 1 or 2. For each uncertain decision, actively acquire
+the minimum useful evidence and finalize it as keep, remove, or refine.
 
-At each turn:
+B. EVIDENCE-AWARE GLOBAL RESCAN
+After uncertain decisions are processed, revisit the full series and actively look for anomalies
+that may still have been missed by the visual screening and the first global hypothesis. You may
+use evidence tools around newly suspected regions before adding them. This is a genuine second
+global search, not merely a restatement of the first pass.
+
+At each evidence turn:
 1. state the unresolved question;
-2. decide whether one available evidence tool can materially change the decision;
+2. decide whether one available evidence tool can materially change the conclusion;
 3. if yes, request exactly one tool;
-4. integrate the returned observation with the global hypothesis;
-5. finalize as keep, remove, or refine once the uncertainty is resolved or the tool budget ends.
+4. integrate the observation with the persistent global context;
+5. finalize when the uncertainty is resolved or the tool budget ends.
 
 Evidence can support either anomaly or normality. Similar historical windows are not automatically
 normal; examine whether the shared pattern is recurrent and contextually compatible. Statistical
 extremeness is also not automatically an anomaly; interpret it with temporal context.
 
-For an item originally created by global action "add", final keep means the added interval is
-accepted, remove means the proposed addition is rejected, and refine changes its boundaries.
+Use the same discrete confidence scale:
+1 = LOW confidence: ambiguous or very subtle deviation, roughly 50%-70%.
+2 = MEDIUM confidence: local abnormality is fairly clear but global uncertainty remains, roughly 70%-95%.
+3 = HIGH confidence: strong statistical or contextual evidence, above roughly 95%.
 
-Do not create new intervals outside the uncertainty being verified. Do not use hidden labels,
-benchmark annotations, or evaluation results. Confidence is in [0,1] and refers to the final
-verified decision and boundaries.
+For an item originally created by global action "add", final keep means the added interval is
+accepted, remove rejects the proposed addition, and refine changes its boundaries.
+
+During the evidence-aware global rescan, only emit a newly discovered interval when the evidence
+supports at least confidence 2. If a suspicion remains confidence 1 after the available evidence,
+do not add it to the final result.
+
+Never use hidden labels, benchmark annotations, or evaluation results.
 """.strip()
 
 
 def evidence_tool_block() -> str:
     return r"""
 AVAILABLE EVIDENCE TOOLS
-- global_context: revisit the full-series plot when the global relation is unclear.
-- local_context: inspect the uncertain interval with surrounding raw context.
+- global_context: revisit the full-series plot.
+- local_context: inspect a target interval with surrounding raw context.
 - reference_context: retrieve non-overlapping, shape-similar intervals from the same series and
   render query/reference context together; similarity does not imply normality.
-- raw_segment: inspect raw numeric samples and first differences around the interval.
-- stat_features: compare robust statistics inside the interval against its surrounding context.
-- scale_view: replot the same interval using either local y-range or global/shared y-range.
-- spike_scan: quantify peak/trough prominence, duration, and local robust deviation for spike-like
-  uncertainty.
+- raw_segment: inspect raw numeric samples and first differences around a target interval.
+- stat_features: compare robust statistics inside a target interval against surrounding context.
+- scale_view: replot a target interval using either local y-range or global/shared y-range.
+- spike_scan: quantify peak/trough prominence, duration, and local robust deviation.
 
 Request at most one tool per turn. Never call a tool only because it is available.
 """.strip()

@@ -25,7 +25,7 @@ def global_schema() -> dict[str, Any]:
             "reviewed_interval": interval,
             "action": {"type": "string", "enum": ["keep", "remove", "refine", "add"]},
             "final_interval": nullable_interval,
-            "confidence": {"type": "number", "minimum": 0.0, "maximum": 1.0},
+            "confidence": {"type": "integer", "enum": [1, 2, 3]},
             "rationale": {"type": "string"},
         },
         "required": [
@@ -101,7 +101,9 @@ class GlobalHypothesisBuilder:
             candidate_id = row.get("candidate_id")
             reviewed = _interval(row["reviewed_interval"])
             final = None if row["final_interval"] is None else _interval(row["final_interval"])
-            confidence = float(row["confidence"])
+            confidence = int(row["confidence"])
+            if confidence not in {1, 2, 3}:
+                raise ValueError("confidence must be one of {1,2,3}")
             if reviewed.end >= signal_length or (final is not None and final.end >= signal_length):
                 raise ValueError("global decision exceeds signal bounds")
             if source == "candidate":
@@ -131,7 +133,7 @@ class GlobalHypothesisBuilder:
                 reviewed_interval=reviewed,
                 action=action,  # type: ignore[arg-type]
                 final_interval=final,
-                confidence=confidence,
+                confidence=confidence,  # type: ignore[arg-type]
                 rationale=str(row["rationale"]),
             ))
         missing = sorted(set(expected) - seen)

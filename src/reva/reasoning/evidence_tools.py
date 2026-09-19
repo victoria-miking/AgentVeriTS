@@ -64,7 +64,7 @@ class EvidenceTools:
         context = int(args.get("context_points", self.context_points))
         path = self.output_dir / f"{decision.decision_id}_local.png"
         self.renderer.local_plot(self.values, interval, path, context_points=context, local_y=True)
-        return ToolObservation("local_context", "Focused raw-series context around the uncertain interval.", {"interval": interval.as_list(), "context_points": context}, [str(path)])
+        return ToolObservation("local_context", "Focused raw-series context around the target interval.", {"interval": interval.as_list(), "context_points": context}, [str(path)])
 
     def scale_view(self, decision: GlobalDecision, args: dict[str, Any]) -> ToolObservation:
         interval = self._focus(decision)
@@ -89,7 +89,7 @@ class EvidenceTools:
             "sample_values": segment[sample_idx].astype(float).tolist() if len(sample_idx) else [],
             "first_difference_stats": self._robust_stats(diffs),
         }
-        return ToolObservation("raw_segment", "Raw values and first-difference evidence around the uncertainty.", data, [])
+        return ToolObservation("raw_segment", "Raw values and first-difference evidence around the target.", data, [])
 
     def stat_features(self, decision: GlobalDecision, args: dict[str, Any]) -> ToolObservation:
         interval = self._focus(decision)
@@ -193,3 +193,30 @@ class EvidenceTools:
         if name not in handlers:
             raise ValueError(f"unknown evidence tool: {name}")
         return handlers[name](decision, args)
+
+    def execute_for_interval(
+        self,
+        name: str,
+        interval: Interval | None,
+        args: dict[str, Any] | None = None,
+        *,
+        decision_id: str = "GLOBAL_RESCAN",
+    ) -> ToolObservation:
+        args = dict(args or {})
+        if name == "global_context":
+            placeholder = interval or Interval(0, 0)
+        else:
+            if interval is None:
+                raise ValueError(f"{name} requires a target interval during global rescan")
+            placeholder = interval
+        pseudo = GlobalDecision(
+            decision_id=decision_id,
+            source="added",
+            candidate_id=None,
+            reviewed_interval=placeholder,
+            action="add",
+            final_interval=placeholder,
+            confidence=1,
+            rationale="temporary evidence target",
+        )
+        return self.execute(name, pseudo, args)

@@ -6,15 +6,26 @@ This repository contains a clean public implementation of the complete REVA infe
 
 ## Method flow
 
-REVA separates broad visual screening from expensive evidence verification:
+REVA separates broad visual screening from evidence-driven agentic verification:
 
-1. **Reference-guided visual screening** renders multi-scale windows, retrieves non-overlapping visually similar reference windows, retains robust references, and produces a dense anomaly score.
-2. **Global Anomaly Hypothesis** reviews the full-series plot. Orange spans are coarse visual candidate windows. Every candidate receives `keep`, `remove`, or `refine`; highly suspicious missed regions receive `add`. Every decision also receives a confidence in `[0,1]`.
-3. **Confidence-only routing** sends only decisions below the configured confidence threshold to the evidence agent. Action type, edit magnitude, and interval length do not independently trigger verification.
-4. **Evidence-driven verification** lets the agent request targeted global/local plots, raw samples, robust statistics, non-overlapping historical references, scale views, or spike diagnostics. It then finalizes the uncertain item as `keep`, `remove`, or `refine`.
-5. **Deterministic closure** combines high-confidence global decisions with verified uncertain decisions and writes the final anomaly intervals.
+1. **Reference-guided visual screening** renders multi-scale windows, retrieves non-overlapping visually similar reference windows, retains robust references, and produces dense anomaly scores and visual candidate intervals.
+2. **Global Anomaly Hypothesis** reviews the full-series plot. Orange spans are coarse visual candidate windows. Every candidate receives `keep`, `remove`, or `refine`; highly suspicious missed regions receive `add`.
+3. **Discrete confidence routing** assigns every global decision confidence `1`, `2`, or `3`. Confidence `1/2` enters the evidence agent; confidence `3` closes directly. Action type does not independently trigger verification.
+4. **Evidence-driven verification** lets the agent request targeted global/local plots, raw samples, robust statistics, non-overlapping historical references, scale views, or spike diagnostics to resolve confidence-1/2 decisions.
+5. **Evidence-aware global rescan** keeps the agent's global anomaly-search responsibility: after uncertain decisions are verified, the same continuous session searches the complete series again for still-missed anomalies and may gather evidence around new suspected regions.
+6. **Deterministic closure** combines confidence-3 global decisions, verified confidence-1/2 decisions, and evidence-supported global-rescan discoveries.
 
-The global hypothesis is intentionally broader than candidate verification. The orange candidates are relative visual abnormalities from a coarse visual detector: they may include globally normal fluctuations and may miss subtle contextual or statistical anomalies. The model therefore learns the sequence-level anomaly morphology from the complete plot and may add a strongly indicated missed interval.
+The orange candidate windows are visual relative anomalies from a coarse-grained, purely visual detector. They may contain false positives—local shapes that look unusual but are globally normal—and may miss statistically or contextually abnormal regions whose visual deviation is subtle. The global reasoning stages therefore infer the sequence's likely anomaly morphology rather than treating orange spans as ground truth.
+
+## Confidence scale
+
+All global and evidence decisions use the same discrete scale:
+
+- `1` — **low confidence**: ambiguity remains or the deviation is very subtle; roughly 50%–70%.
+- `2` — **medium confidence**: local abnormality is fairly clear, but the global interpretation remains uncertain; roughly 70%–95%.
+- `3` — **high confidence**: strong statistical or contextual evidence supports the decision; above roughly 95%.
+
+These percentages are calibration guides rather than exact probabilities.
 
 ## Important inference rule
 
@@ -65,7 +76,7 @@ reva \
 Useful overrides:
 
 ```bash
-reva --input data/example.csv --alpha 0.01 --confidence-threshold 0.75 --model gpt-5.6-sol
+reva --input data/example.csv --alpha 0.01 --model gpt-5.6-sol
 ```
 
 ## Output
@@ -80,11 +91,12 @@ outputs/example/
 ├── routing.json
 ├── evidence/
 │   ├── <decision_id>.json
+│   ├── global_rescan.json
 │   └── evidence images ...
 └── result.json
 ```
 
-`global_hypothesis.json` is the auditable boundary between global visual reasoning and agentic evidence verification. Its decisions have the following contract:
+`global_hypothesis.json` is the auditable boundary between full-series visual reasoning and evidence verification. Example:
 
 ```json
 {
@@ -94,7 +106,7 @@ outputs/example/
   "reviewed_interval": [1200, 1285],
   "action": "refine",
   "final_interval": [1214, 1271],
-  "confidence": 0.61,
+  "confidence": 2,
   "rationale": "..."
 }
 ```
@@ -103,9 +115,9 @@ Added regions use `source: "added"`, `candidate_id: null`, and `action: "add"`.
 
 ## Evidence tools
 
-The evidence verifier exposes seven read-only tools: `global_context`, `local_context`, `reference_context`, `raw_segment`, `stat_features`, `scale_view`, and `spike_scan`. Tool calls are adaptive rather than a fixed sequence, and the configured evidence budget defaults to three calls per uncertain decision.
+The evidence agent exposes seven read-only tools: `global_context`, `local_context`, `reference_context`, `raw_segment`, `stat_features`, `scale_view`, and `spike_scan`. Tool calls are adaptive rather than a fixed sequence.
 
-Historical similarity is treated only as retrieval evidence. A similar reference is not automatically considered normal.
+Historical similarity is retrieval evidence only. A similar historical window is not automatically normal.
 
 ## Reproducibility defaults
 
@@ -116,11 +128,11 @@ The visual screening stage uses three temporal scales (`224`, `448`, `672`), qua
 ```text
 src/reva/
 ├── visual/              # rendering, visual encoder, reference-guided screening
-├── reasoning/           # prompts, structured global reasoning, routing, tools, agent
+├── reasoning/           # prompts, global hypothesis, routing, evidence tools, agent
 ├── config.py
 ├── io.py
 ├── pipeline.py
 └── cli.py
 ```
 
-The repository intentionally excludes one-off development experiments, old comparison runners, private paths, cached outputs, API credentials, and prompt text tied to external comparison methods.
+The repository intentionally excludes one-off development experiments, private paths, cached outputs, API credentials, and prompt text tied to external comparison methods.

@@ -30,8 +30,8 @@ class ReasoningConfig:
     model: str = "gpt-5.6-sol"
     reasoning_effort: str = "medium"
     max_output_tokens: int = 5000
-    confidence_threshold: float = 0.75
     max_evidence_calls: int = 3
+    max_global_rescan_calls: int = 3
     context_points: int = 256
     reference_count: int = 4
     store_responses: bool = True

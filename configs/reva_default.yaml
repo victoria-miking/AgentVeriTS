@@ -17,8 +17,8 @@ reasoning:
   model: gpt-5.6-sol
   reasoning_effort: medium
   max_output_tokens: 5000
-  confidence_threshold: 0.75
   max_evidence_calls: 3
+  max_global_rescan_calls: 3
   context_points: 256
   reference_count: 4
   store_responses: true
