@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Sequence
+from typing import TYPE_CHECKING, Any, Sequence
 
 import numpy as np
 
 from ..types import GlobalDecision, Interval, ScaleReferenceTrace
-from ..visual.render import SeriesRenderer
+if TYPE_CHECKING:
+    from ..visual.render import SeriesRenderer
 
 
 @dataclass

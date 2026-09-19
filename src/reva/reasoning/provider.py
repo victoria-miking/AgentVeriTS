@@ -31,6 +31,12 @@ class OpenAIReasoningClient:
         self.reasoning_effort = reasoning_effort
         self.max_output_tokens = int(max_output_tokens)
         self.store = bool(store)
+        if not self.store:
+            raise ValueError(
+                "This public REVA client uses previous_response_id for continuous signal-level "
+                "reasoning and therefore requires store=True. Implement explicit replay before "
+                "disabling stored response state."
+            )
         if client is None:
             from openai import OpenAI
             client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"), base_url=os.getenv("OPENAI_BASE_URL") or None)
