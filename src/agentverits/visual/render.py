@@ -21,7 +21,8 @@ def preprocess_series(values: Sequence[float]) -> np.ndarray:
     x = np.asarray(values, dtype=float).reshape(-1)
     if x.size < 2:
         return np.zeros_like(x, dtype=np.float32)
-    x = np.nan_to_num(x, nan=float(np.nanmedian(x)) if np.isfinite(x).any() else 0.0)
+    if not np.isfinite(x).all():
+        raise ValueError("screening requires finite values")
     y = detrend(x)
     lo, hi = float(np.min(y)), float(np.max(y))
     if hi - lo < 1e-12:

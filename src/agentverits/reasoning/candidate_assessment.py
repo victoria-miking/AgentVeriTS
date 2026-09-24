@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Any, Sequence
 
-from ..types import GlobalDecision, GlobalHypothesis, Interval, VisualCandidate
+from ..types import GlobalDecision, GlobalHypothesis, Interval, VisualCandidate, validate_confidence
 from .prompts import GLOBAL_SYSTEM_PROMPT
 from .provider import OpenAIReasoningClient
 
@@ -25,7 +25,7 @@ def global_schema() -> dict[str, Any]:
             "reviewed_interval": interval,
             "action": {"type": "string", "enum": ["keep", "remove", "refine", "add"]},
             "final_interval": nullable_interval,
-            "confidence": {"type": "integer", "enum": [1, 2, 3]},
+            "confidence": {"type": "number", "minimum": 0, "maximum": 1},
             "rationale": {"type": "string"},
         },
         "required": [
@@ -50,12 +50,13 @@ def global_schema() -> dict[str, Any]:
 def _interval(value: Sequence[int]) -> Interval:
     if len(value) != 2:
         raise ValueError("interval must have two endpoints")
-    return Interval(int(value[0]), int(value[1]))
+    return Interval(value[0], value[1])
 
 
-class GlobalHypothesisBuilder:
-    def __init__(self, client: OpenAIReasoningClient) -> None:
+class CandidateAssessment:
+    def __init__(self, client: OpenAIReasoningClient, confidence_threshold: float = 0.95) -> None:
         self.client = client
+        self.confidence_threshold = confidence_threshold
 
     def run(
         self,
@@ -75,6 +76,7 @@ class GlobalHypothesisBuilder:
         ]
         text = (
             f"Signal ID: {signal_id}\nSignal length: {signal_length}\n"
+            f"Verification threshold: {self.confidence_threshold:g}; only lower confidence enters the agent.\n"
             f"Orange visual candidates: {candidate_rows}\n\n"
             "Return one decision for every listed candidate and add any highly suspicious missed region. "
             "First characterize normal behavior and the likely anomaly morphology of this sequence."
@@ -83,7 +85,7 @@ class GlobalHypothesisBuilder:
             instructions=GLOBAL_SYSTEM_PROMPT,
             text=text,
             schema=global_schema(),
-            schema_name="reva_global_hypothesis",
+            schema_name="agentverits_global_hypothesis",
             images=[global_image],
         )
         payload = reply.payload
@@ -101,10 +103,7 @@ class GlobalHypothesisBuilder:
             candidate_id = row.get("candidate_id")
             reviewed = _interval(row["reviewed_interval"])
             final = None if row["final_interval"] is None else _interval(row["final_interval"])
-            confidence_raw = row["confidence"]
-            if type(confidence_raw) is not int or confidence_raw not in {1, 2, 3}:
-                raise ValueError("confidence must be an integer in {1,2,3}")
-            confidence = confidence_raw
+            confidence = validate_confidence(row["confidence"])
             if reviewed.end >= signal_length or (final is not None and final.end >= signal_length):
                 raise ValueError("global decision exceeds signal bounds")
             if source == "candidate":

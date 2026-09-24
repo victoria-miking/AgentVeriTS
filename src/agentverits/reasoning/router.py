@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..types import GlobalDecision, GlobalHypothesis
+from ..types import GlobalDecision, GlobalHypothesis, validate_confidence
 
 
 @dataclass
@@ -12,13 +12,18 @@ class RoutingResult:
 
 
 class UncertaintyRouter:
-    """Fixed discrete routing: confidence 1/2 -> evidence agent; confidence 3 -> direct closure."""
+    """Paper Eq. (5): only q < tau enters agentic verification."""
+
+    def __init__(self, confidence_threshold: float = 0.95) -> None:
+        self.threshold = validate_confidence(confidence_threshold)
+        if self.threshold == 0:
+            raise ValueError("confidence_threshold must be positive")
 
     def route(self, hypothesis: GlobalHypothesis) -> RoutingResult:
         direct: list[GlobalDecision] = []
         uncertain: list[GlobalDecision] = []
         for decision in hypothesis.decisions:
-            if int(decision.confidence) == 3:
+            if decision.confidence >= self.threshold:
                 direct.append(decision)
             else:
                 uncertain.append(decision)

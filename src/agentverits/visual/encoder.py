@@ -23,18 +23,15 @@ def _make_mask(image_size: int, patch_size: int, kernel_size: int) -> torch.Tens
 
 
 def _pool_tokens(tokens: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
-    pooled = []
-    for i in range(mask.shape[1]):
-        ids = mask[:, i].to(tokens.device)
-        pooled.append(tokens.index_select(1, ids).mean(dim=1, keepdim=True))
-    return torch.cat(pooled, dim=1)
+    ids = mask.to(tokens.device).T
+    return tokens[:, ids, :].mean(dim=2)
 
 
 class VisualEncoder:
     """OpenCLIP visual backbone used by the coarse visual screening stage.
 
     The public inference path deliberately uses the legacy [0,1] rendered tensor
-    directly, matching the frozen screening configuration used for REVA.
+    directly, matching the frozen screening configuration used for AgentVeriTS.
     """
 
     def __init__(
@@ -55,9 +52,11 @@ class VisualEncoder:
         model, _, _ = open_clip.create_model_and_transforms(
             model_name,
             pretrained=pretrained,
-            vision_cfg={"output_tokens": True},
+            output_dict=True,
         )
         self.model = model.to(self.device).eval()
+        self.model.visual.output_tokens = True
+        self.model.requires_grad_(False)
         self.large_mask = _make_mask(self.image_size, self.patch_size, 48)
         self.mid_mask = _make_mask(self.image_size, self.patch_size, 32)
 

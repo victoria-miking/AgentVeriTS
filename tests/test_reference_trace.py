@@ -4,8 +4,8 @@ from pathlib import Path
 
 import numpy as np
 
-from reva.reasoning.evidence_tools import EvidenceTools
-from reva.types import GlobalDecision, Interval, ScaleReferenceTrace
+from agentverits.reasoning.evidence_tools import EvidenceTools
+from agentverits.types import GlobalDecision, Interval, ScaleReferenceTrace
 
 
 class FakeRenderer:
@@ -34,7 +34,7 @@ class ReferenceTraceTest(unittest.TestCase):
         )
         decision = GlobalDecision(
             "V1", "candidate", "V1",
-            Interval(100, 120), "keep", Interval(100, 120), 1, "uncertain",
+            Interval(100, 120), "keep", Interval(100, 120), 0.7, "uncertain",
         )
         renderer = FakeRenderer()
         with tempfile.TemporaryDirectory() as tmp:

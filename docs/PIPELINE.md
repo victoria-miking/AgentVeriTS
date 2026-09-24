@@ -1,42 +1,38 @@
-# REVA pipeline contract
+# AgentVeriTS implementation contract
 
-## Global hypothesis
+## Anomaly Screening — Eqs. (1)–(3)
 
-The global module receives one complete signal image with orange visual candidate spans. It must return every input candidate once, preserving its candidate ID and reviewed interval. Original candidates can only receive `keep`, `remove`, or `refine`. A missed region can enter through a separate `add` record.
+A univariate signal is detrended and normalized using the existing rendering convention. Window lengths are 224, 448 and 672, with quarter-window strides. A final window is anchored at the actual signal end when the regular stride grid leaves a tail.
 
-The confidence value is discrete and measures confidence in the selected action and its boundaries:
+Frozen CLIP ViT-B/16 features retrieve top-16 windows that do not overlap the query. The existing robust retention selects four references. Cosine distance to the closest reference patch gives patch discrepancies. Existing mid/large neighborhood features and harmonic fusion are retained. All mask indices are zero based.
 
-- `1` — low confidence: ambiguous or very subtle deviation, roughly 50%–70%.
-- `2` — medium confidence: local abnormality is fairly clear but global interpretation remains uncertain, roughly 70%–95%.
-- `3` — high confidence: strong statistical or contextual evidence, above roughly 95%.
+Window maps are resized to their actual temporal windows and overlap-averaged into the aligned anomaly map. The top 0.25 fraction along the visual axis is then averaged, in the order specified by Eq. (2). Robust positive normalization, equal scale fusion and configured smoothing are retained. A Gaussian-quantile threshold extracts contiguous intervals. Label data is never used to select the runtime alpha.
 
-The percentages are calibration guides, not exact probabilities.
+## Candidate Assessment — Eqs. (4)–(5)
 
-## Verification routing
+One global plot highlights all selected candidates. The VLM receives it with candidate intervals and task instructions. Its parsed global anomaly hypothesis contains one record for every original candidate, plus optional added regions. Original candidates keep their identifiers and reviewed endpoints.
 
-Routing is fixed and action-independent:
+Each record contains:
 
-```text
-confidence = 1 or 2  -> evidence verification
-confidence = 3       -> direct closure
-```
+- `reviewed_interval` and `final_interval`: zero-based inclusive endpoints; the latter is null for REMOVE.
+- `action`: KEEP, REMOVE, REFINE or ADD (lowercase in JSON).
+- `confidence`: finite numeric q in [0,1], measuring confidence in the operation and its boundaries.
+- `rationale`: a brief explanation.
 
-A `keep`, `remove`, `refine`, or `add` action is never routed merely because of its action type, edit magnitude, or interval length.
+Only q < tau_G enters verification. The default tau_G is 0.95. Equality belongs to the direct branch; action type does not override routing.
 
-## Evidence verification
+## Agentic Verification — Eqs. (6)–(7)
 
-The evidence agent receives the global normal-pattern hypothesis, the global anomaly-pattern hypothesis, and one confidence-1/2 decision at a time. It remains in the same response chain as the global hypothesis so the full-series context is retained. It can adaptively request one evidence tool at a time and then returns `keep`, `remove`, or `refine`.
+The agent processes the low-confidence set using the global image, full hypothesis and accumulated evidence in a continuous response chain. Processing targets sequentially is an implementation detail; it does not reset context or reopen candidate-wise conversations.
 
-For a global `add` item, verified `keep` accepts the addition, `remove` rejects it, and `refine` changes its boundaries.
+The model can request one of four evidence tools or finalize. Each tool accepts a target interval and typed parameters. Unused parameters are null in the strict response schema and omitted before dispatch. Raw evidence is returned as exact consecutive pages; focus supports local/shared axes; reference supports retrieval scale/count; statistics supports surrounding, left, right or global baselines, excluding the target.
 
-## Evidence-aware global rescan
+The original maximum of three tool requests per uncertain target is retained. Invalid tool parameters consume a turn and return an error observation in the same chain. On budget exhaustion the schema permits only finalization. If existing global evidence is sufficient, the agent may finalize without a tool call. It reports uncertainty honestly; final confidence is not forced above 0.95.
 
-After all confidence-1/2 decisions have been verified, the same evidence agent performs one additional global search over the full sequence.
+KEEP preserves the current proposed target boundaries. REMOVE discards the target. REFINE changes its boundaries. ADD accepts a proposed added target or records newly supported missed intervals in `additions`. The agent retains the ability to inspect other suspected regions using global context during verification. High-confidence records themselves are never sent back for verification. The legacy unconditional global rescan is removed because the paper restricts verification to the uncertain set.
 
-This rescan is allowed to discover anomalies still missed by both the visual screening stage and the first global hypothesis. The agent can revisit the global plot and call local, statistical, raw-value, reference, scale, or spike tools around newly suspected regions. The reference tool first reuses the robust visual references retained by Stage-I for the nearest matching screening window, with raw-shape retrieval used only as a fallback when no retained reference is available.
+## Final intervals — Eq. (8)
 
-Only evidence-supported discoveries with confidence `2` or `3` are emitted as new intervals. A remaining confidence-1 suspicion is not added to the final result.
+Apply high-confidence operations directly (excluding REMOVE). Replace each uncertain operation with its verified result, include agent additions, and merge overlapping or immediately adjacent accepted intervals. A high-confidence REMOVE is therefore never accidentally retained merely because its confidence is high.
 
-## Final closure
-
-Confidence-3 global decisions are applied directly. Confidence-1/2 global decisions are replaced by their verified agent decisions. Evidence-aware global-rescan discoveries are then added, and overlapping or immediately adjacent intervals are merged deterministically.
+Each signal has a separate response chain. The complete global plot is sent once; new evidence images and observations are added incrementally. Response IDs are recorded for auditing. The client does not reconstruct past messages or silently restart a failed chain.

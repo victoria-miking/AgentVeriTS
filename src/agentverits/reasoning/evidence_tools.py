@@ -1,10 +1,11 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Sequence
 
 import numpy as np
+import json
 
 from ..types import GlobalDecision, Interval, ScaleReferenceTrace
 if TYPE_CHECKING:
@@ -19,7 +20,7 @@ class ToolObservation:
     images: list[str]
 
     def as_prompt_text(self) -> str:
-        return f"TOOL={self.tool}\nSUMMARY={self.summary}\nDATA={self.data}"
+        return f"TOOL={self.tool}\nSUMMARY={self.summary}\nDATA={json.dumps(self.data, allow_nan=False)}"
 
 
 class EvidenceTools:
@@ -42,6 +43,9 @@ class EvidenceTools:
         self.context_points = int(context_points)
         self.reference_count = int(reference_count)
         self.reference_traces = dict(reference_traces or {})
+        self._request_index = 0
+        if not len(self.values) or not np.isfinite(self.values).all():
+            raise ValueError("evidence tools require a nonempty finite signal")
 
     @staticmethod
     def _robust_stats(x: np.ndarray) -> dict[str, float]:
@@ -84,37 +88,50 @@ class EvidenceTools:
         hi = min(len(self.values) - 1, interval.end + context)
         segment = self.values[lo:hi + 1]
         diffs = np.diff(segment)
-        sample_count = min(160, len(segment))
-        sample_idx = np.linspace(0, max(0, len(segment) - 1), sample_count, dtype=int) if len(segment) else np.array([], dtype=int)
+        page_start = int(args.get("page_start", lo))
+        if not lo <= page_start <= hi:
+            raise ValueError("page_start must lie within the requested raw range")
+        max_points = int(args.get("max_points", 2048))
+        if not 1 <= max_points <= 2048:
+            raise ValueError("max_points must be between 1 and 2048")
+        page_end = min(hi, page_start + max_points - 1)
         data = {
-            "range": [lo, hi],
-            "sample_indices": (sample_idx + lo).astype(int).tolist(),
-            "sample_values": segment[sample_idx].astype(float).tolist() if len(sample_idx) else [],
+            "requested_range": [lo, hi], "range": [page_start, page_end],
+            "sample_indices": list(range(page_start, page_end + 1)),
+            "sample_values": self.values[page_start:page_end + 1].tolist(),
+            "next_start": page_end + 1 if page_end < hi else None,
             "first_difference_stats": self._robust_stats(diffs),
         }
-        return ToolObservation("raw_segment", "Raw values and first-difference evidence around the target.", data, [])
+        return ToolObservation("raw", "Exact consecutive raw samples; next_start indicates remaining samples.", data, [])
+
+    def _background(self, interval: Interval, args: dict[str, Any]) -> tuple[np.ndarray, int, int]:
+        context = int(args.get("context_points", self.context_points))
+        lo, hi = max(0, interval.start - context), min(len(self.values) - 1, interval.end + context)
+        baseline = args.get("baseline", "surrounding")
+        if baseline == "global":
+            lo, hi = 0, len(self.values) - 1
+        left, right = self.values[lo:interval.start], self.values[interval.end + 1:hi + 1]
+        if baseline == "left":
+            return left, lo, interval.start - 1
+        if baseline == "right":
+            return right, interval.end + 1, hi
+        if baseline not in {"surrounding", "global"}:
+            raise ValueError("unknown statistics baseline")
+        return np.concatenate([left, right]), lo, hi
 
     def stat_features(self, decision: GlobalDecision, args: dict[str, Any]) -> ToolObservation:
         interval = self._focus(decision)
-        context = int(args.get("context_points", self.context_points))
-        lo = max(0, interval.start - context)
-        hi = min(len(self.values) - 1, interval.end + context)
-        inside = self.values[interval.start:interval.end + 1]
-        left = self.values[lo:interval.start]
-        right = self.values[interval.end + 1:hi + 1]
-        background = np.concatenate([left, right]) if len(left) + len(right) else np.array([], dtype=float)
-        inside_stats = self._robust_stats(inside)
-        bg_stats = self._robust_stats(background)
-        scale = 1.4826 * bg_stats["mad"] + 1e-12
-        robust_location_z = (inside_stats["median"] - bg_stats["median"]) / scale
-        robust_range_ratio = (inside_stats["max"] - inside_stats["min"] + 1e-12) / (bg_stats["max"] - bg_stats["min"] + 1e-12)
+        background, lo, hi = self._background(interval, args)
+        inside_stats = self._robust_stats(self.values[interval.start:interval.end + 1])
+        bg_stats = self._robust_stats(background) if len(background) else None
         data = {
             "interval": interval.as_list(), "context_range": [lo, hi],
+            "baseline": args.get("baseline", "surrounding"), "baseline_count": len(background),
             "inside": inside_stats, "context_excluding_interval": bg_stats,
-            "robust_location_z": float(robust_location_z),
-            "robust_range_ratio": float(robust_range_ratio),
+            "robust_location_z": None if bg_stats is None else (inside_stats["median"] - bg_stats["median"]) / (1.4826 * bg_stats["mad"] + 1e-12),
+            "robust_range_ratio": None if bg_stats is None else (inside_stats["max"] - inside_stats["min"] + 1e-12) / (bg_stats["max"] - bg_stats["min"] + 1e-12),
         }
-        return ToolObservation("stat_features", "Robust interval-vs-context statistics.", data, [])
+        return ToolObservation("statistics", "Robust interval-vs-baseline statistics; null deviations mean no baseline samples.", data, [])
 
     @staticmethod
     def _resample_z(x: np.ndarray, n: int = 128) -> np.ndarray:
@@ -148,11 +165,14 @@ class EvidenceTools:
         self,
         target: Interval,
         count: int,
+        requested_scale: int | None = None,
     ) -> tuple[Interval | None, list[Interval], int | None]:
         if not self.reference_traces:
             return None, [], None
         target_length = target.end - target.start + 1
-        scale = min(self.reference_traces, key=lambda value: abs(int(value) - int(target_length)))
+        scale = requested_scale or min(self.reference_traces, key=lambda value: abs(int(value) - int(target_length)))
+        if scale not in self.reference_traces:
+            return None, [], scale
         trace = self.reference_traces[int(scale)]
         if not trace.window_starts:
             return None, [], int(scale)
@@ -168,12 +188,13 @@ class EvidenceTools:
             Interval(int(start), min(len(self.values) - 1, int(start) + int(scale) - 1))
             for start in rows[: max(0, int(count))]
         ]
+        refs = [r for r in refs if r.end < target.start or r.start > target.end]
         return query_window, refs, int(scale)
 
     def reference_context(self, decision: GlobalDecision, args: dict[str, Any]) -> ToolObservation:
         target = self._focus(decision)
         count = int(args.get("count", self.reference_count))
-        query_window, refs, scale = self._screening_reference_intervals(target, count)
+        query_window, refs, scale = self._screening_reference_intervals(target, count, args.get("scale"))
         context_points = int(args.get("context_points", min(self.context_points, 128)))
         shared_y = bool(args.get("shared_y", True))
         images: list[str] = []
@@ -212,11 +233,18 @@ class EvidenceTools:
                 images,
             )
 
-        refs, similarities = self._reference_intervals(target, count)
+        query = target
+        if args.get("scale") is not None:
+            length = min(len(self.values), int(args["scale"]))
+            start = max(0, min(len(self.values) - length, (target.start + target.end - length + 1) // 2))
+            query = Interval(start, start + length - 1)
+        refs, similarities = self._reference_intervals(query, count)
+        pairs = [(r, sim) for r, sim in zip(refs, similarities) if r.end < target.start or r.start > target.end]
+        refs, similarities = [x[0] for x in pairs], [x[1] for x in pairs]
         path = self.output_dir / f"{decision.decision_id}_references_fallback.png"
         self.renderer.comparison_plot(
             self.values,
-            target,
+            query,
             refs,
             path,
             context_points=context_points,
@@ -238,10 +266,7 @@ class EvidenceTools:
 
     def spike_scan(self, decision: GlobalDecision, args: dict[str, Any]) -> ToolObservation:
         interval = self._focus(decision)
-        context = int(args.get("context_points", min(self.context_points, 128)))
-        lo = max(0, interval.start - context)
-        hi = min(len(self.values) - 1, interval.end + context)
-        bg = np.concatenate([self.values[lo:interval.start], self.values[interval.end + 1:hi + 1]])
+        bg, lo, hi = self._background(interval, args)
         inside = self.values[interval.start:interval.end + 1]
         bg_med = float(np.median(bg)) if len(bg) else float(np.median(inside))
         bg_mad = float(np.median(np.abs(bg - bg_med))) if len(bg) else 0.0
@@ -250,50 +275,48 @@ class EvidenceTools:
         trough_z = float((bg_med - np.min(inside)) / scale) if len(inside) else 0.0
         data = {
             "interval": interval.as_list(), "duration": len(inside),
-            "peak_robust_z": peak_z, "trough_robust_z": trough_z,
+            "peak_robust_z": peak_z if len(bg) else None, "trough_robust_z": trough_z if len(bg) else None,
+            "baseline": args.get("baseline", "surrounding"), "baseline_count": len(bg),
             "dominant_direction": "peak" if peak_z >= trough_z else "trough",
             "context_median": bg_med, "context_mad": bg_mad,
         }
         return ToolObservation("spike_scan", "Robust peak/trough prominence and duration evidence.", data, [])
 
     def execute(self, name: str, decision: GlobalDecision, args: dict[str, Any] | None = None) -> ToolObservation:
-        args = dict(args or {})
-        handlers = {
-            "global_context": self.global_context,
-            "local_context": self.local_context,
-            "reference_context": self.reference_context,
-            "raw_segment": self.raw_segment,
-            "stat_features": self.stat_features,
-            "scale_view": self.scale_view,
-            "spike_scan": self.spike_scan,
-        }
+        args = {k: v for k, v in (args or {}).items() if v is not None}
+        allowed = {"interval", "context_points", "mode", "count", "scale", "shared_y", "baseline", "diagnostic", "max_points", "page_start"}
+        if set(args) - allowed:
+            raise ValueError("unknown evidence parameters")
+        for key in ("context_points", "count", "scale", "max_points", "page_start"):
+            if key in args and (type(args[key]) is not int or args[key] < 0):
+                raise ValueError(f"{key} must be a nonnegative integer")
+        if "count" in args and not 1 <= args["count"] <= 16:
+            raise ValueError("count must be between 1 and 16")
+        if "scale" in args and args["scale"] < 2:
+            raise ValueError("scale must be >= 2")
+        if "shared_y" in args and type(args["shared_y"]) is not bool:
+            raise ValueError("shared_y must be boolean")
+        if args.get("mode", "local_y") not in {"local_y", "global_y"}:
+            raise ValueError("unknown plot mode")
+        if args.get("diagnostic", "robust") not in {"robust", "spike"}:
+            raise ValueError("unknown diagnostic")
+        target = self._focus(decision)
+        if "interval" in args:
+            raw = args.pop("interval")
+            if not isinstance(raw, (tuple, list)) or len(raw) != 2:
+                raise ValueError("interval requires two integer endpoints")
+            target = Interval(raw[0], raw[1])
+        if target.end >= len(self.values):
+            raise ValueError("tool target exceeds signal bounds")
+        self._request_index += 1
+        # Each observation has a distinct artifact path; repeat requests cannot overwrite evidence.
+        proxy = replace(decision, decision_id=f"{decision.decision_id[:64]}_{self._request_index}",
+                        reviewed_interval=target, final_interval=target)
+        handlers = {"raw": self.raw_segment, "reference": self.reference_context,
+                    "focus": self.scale_view if args.get("mode") == "global_y" else self.local_context,
+                    "statistics": self.spike_scan if args.get("diagnostic") == "spike" else self.stat_features}
         if name not in handlers:
             raise ValueError(f"unknown evidence tool: {name}")
-        return handlers[name](decision, args)
-
-    def execute_for_interval(
-        self,
-        name: str,
-        interval: Interval | None,
-        args: dict[str, Any] | None = None,
-        *,
-        decision_id: str = "GLOBAL_RESCAN",
-    ) -> ToolObservation:
-        args = dict(args or {})
-        if name == "global_context":
-            placeholder = interval or Interval(0, 0)
-        else:
-            if interval is None:
-                raise ValueError(f"{name} requires a target interval during global rescan")
-            placeholder = interval
-        pseudo = GlobalDecision(
-            decision_id=decision_id,
-            source="added",
-            candidate_id=None,
-            reviewed_interval=placeholder,
-            action="add",
-            final_interval=placeholder,
-            confidence=1,
-            rationale="temporary evidence target",
-        )
-        return self.execute(name, pseudo, args)
+        observation = handlers[name](proxy, args)
+        observation.tool = name
+        return observation

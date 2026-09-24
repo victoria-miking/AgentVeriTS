@@ -1,138 +1,106 @@
-# REVA
+# AgentVeriTS
 
-**REVA: Reference-Guided Screening and Evidence-Driven Agentic Verification for Time Series Anomaly Detection**
+**AgentVeriTS: Confidence-Guided Agentic Verification for Time-Series Anomaly Detection**
 
-This repository contains a clean public implementation of the complete REVA inference pipeline for univariate time-series anomaly detection.
+Public inference implementation for univariate time-series anomaly detection.
+Repository: [victoria-miking/AgentVeriTS](https://github.com/victoria-miking/AgentVeriTS).
 
-## Method flow
+## Method
 
-REVA separates broad visual screening from evidence-driven agentic verification:
+The implementation follows the paper's three modules:
 
-1. **Reference-guided visual screening** renders multi-scale windows, retrieves non-overlapping visually similar reference windows, retains robust references, and produces dense anomaly scores and visual candidate intervals.
-2. **Global Anomaly Hypothesis** reviews the full-series plot. Orange spans are coarse visual candidate windows. Every candidate receives `keep`, `remove`, or `refine`; highly suspicious missed regions receive `add`.
-3. **Discrete confidence routing** assigns every global decision confidence `1`, `2`, or `3`. Confidence `1/2` enters the evidence agent; confidence `3` closes directly. Action type does not independently trigger verification.
-4. **Evidence-driven verification** lets the agent request targeted global/local plots, raw samples, robust statistics, non-overlapping historical references, scale views, or spike diagnostics to resolve confidence-1/2 decisions.
-5. **Evidence-aware global rescan** keeps the agent's global anomaly-search responsibility: after uncertain decisions are verified, the same continuous session searches the complete series again for still-missed anomalies and may gather evidence around new suspected regions.
-6. **Deterministic closure** combines confidence-3 global decisions, verified confidence-1/2 decisions, and evidence-supported global-rescan discoveries.
+1. **Anomaly Screening** renders overlapping multi-scale windows and uses a frozen CLIP ViT-B/16 encoder. Similar non-overlapping reference windows form a query-specific patch bank. Patch discrepancies are aligned and aggregated into a temporal anomaly map; top-25% visual responses produce point scores, and a Gaussian-quantile threshold produces candidate intervals.
+2. **Candidate Assessment** jointly reviews every candidate in one full-series image and may propose missed intervals. Each hypothesis contains an interval, an operation (`keep`, `remove`, `refine`, `add`), numeric confidence **q in [0,1]**, and a brief rationale.
+3. **Agentic Verification** verifies only hypotheses with **q < 0.95** by adaptively requesting evidence. Decisions with **q >= 0.95** bypass verification and retain their operation. Verified intervals and retained high-confidence intervals are merged into the final result (paper Eq. 8).
 
-The orange candidate windows are visual relative anomalies from a coarse-grained, purely visual detector. They may contain false positives—local shapes that look unusual but are globally normal—and may miss statistically or contextually abnormal regions whose visual deviation is subtle. The global reasoning stages therefore infer the sequence's likely anomaly morphology rather than treating orange spans as ground truth.
+Confidence describes support for the selected operation and its boundaries, including a removal decision. It is a model judgment, not a calibrated probability. The threshold is configurable; `0.95` is the paper default. Action type alone does not trigger verification.
 
-## Confidence scale
-
-All global and evidence decisions use the same discrete scale:
-
-- `1` — **low confidence**: ambiguity remains or the deviation is very subtle; roughly 50%–70%.
-- `2` — **medium confidence**: local abnormality is fairly clear, but the global interpretation remains uncertain; roughly 70%–95%.
-- `3` — **high confidence**: strong statistical or contextual evidence supports the decision; above roughly 95%.
-
-These percentages are calibration guides rather than exact probabilities.
-
-## Important inference rule
-
-The public inference path **never uses ground-truth labels to choose a screening threshold**. `screening.alpha` is a runtime configuration (default `0.01`). The implementation can emit candidate sets for `0.1`, `0.01`, and `0.001`, but the selected runtime candidate set is determined only by configuration.
+The agent can discover and add missed anomalies while verifying uncertain hypotheses. There is no unconditional extra global-rescan pass. Global context is retained across all uncertain targets in one signal, rather than reopening independent conversations.
 
 ## Installation
 
-Python 3.10+ is recommended.
+Python 3.10+ is supported. Install a PyTorch/torchvision build suitable for your device before installing the package if needed.
 
 ```bash
 pip install -r requirements.txt
 pip install -e .
 ```
 
-Set the model API key:
+The public dependency pins are in `pyproject.toml` and `requirements.txt`. The first screening run downloads the pretrained OpenCLIP weights. No labeled training data is consumed.
+
+## Official OpenAI API
+
+Use an **official OpenAI API key**:
 
 ```bash
-export OPENAI_API_KEY="..."
+export OPENAI_API_KEY="your-api-key"
 ```
 
-On Windows PowerShell:
+Windows PowerShell:
 
 ```powershell
-$env:OPENAI_API_KEY="..."
+$env:OPENAI_API_KEY="your-api-key"
 ```
 
-## Input format
+The client uses the official SDK and `https://api.openai.com/v1/responses`. `OPENAI_BASE_URL` does not override that endpoint. The default model is the paper's `gpt-5.6-sol`; access depends on your API account.
 
-The CLI accepts a CSV with a `value` column and optional `timestamp` column. Common alternatives such as `data`, `kpi`, `metric`, or `y` are also recognized. Label columns are not required and are not consumed by inference.
+- Candidate assessment starts a stored response with `store=True`.
+- Each verification request sends `previous_response_id` plus only the new target or evidence observation and new images.
+- The latest response ID is carried across tool rounds and uncertain targets. Each signal starts its own chain.
+- Instructions are supplied on every request. GPT-5.6-family requests also use `reasoning.context=all_turns` for available compatible reasoning state.
+- The SDK handles bounded transient retries. Refused, incomplete or invalid responses fail explicitly. A missing/expired parent response never silently falls back to a fresh conversation or manual history reconstruction.
 
-```text
-timestamp,value
-0,0.31
-1,0.29
-2,0.33
-...
-```
+Tool selection follows the paper's **structured action/observation protocol**: the model returns a closed JSON action, the local system executes the selected evidence tool, and the next response receives its observation. This uses official Responses structured outputs; it does not claim native function-call events. See [API details](docs/OPENAI_API.md).
 
-## Run
+## Input and execution
+
+Input is a CSV with a `value` column and an optional `timestamp` column. The aliases `data`, `kpi`, `metric`, and `y` are recognized. A single unnamed numeric signal column is also accepted after excluding time and label columns; ambiguous input is rejected. CSV gaps are interpolated, with endpoint filling. Direct Python input must be finite. Intervals use **zero-based, inclusive endpoints**.
 
 ```bash
-reva \
-  --input data/example.csv \
-  --config configs/reva_default.yaml \
+agentverits --input data/example.csv \
+  --config configs/agentverits_default.yaml \
   --output-dir outputs/example
+
+agentverits --input data/example.csv --alpha 0.01 \
+  --model gpt-5.6-sol --confidence-threshold 0.95
 ```
 
-Useful overrides:
+```python
+from agentverits import AgentVeriTSConfig, AgentVeriTSPipeline
 
-```bash
-reva --input data/example.csv --alpha 0.01 --model gpt-5.6-sol
+config = AgentVeriTSConfig.from_yaml("configs/agentverits_default.yaml")
+result = AgentVeriTSPipeline(config).run(values, signal_id="example", output_dir="outputs/example")
+print([interval.as_list() for interval in result.final_intervals])
 ```
 
-## Output
-
-Each run writes:
-
-```text
-outputs/example/
-├── screening.json
-├── global_candidates.png
-├── global_hypothesis.json
-├── routing.json
-├── evidence/
-│   ├── <decision_id>.json
-│   ├── global_rescan.json
-│   └── evidence images ...
-└── result.json
-```
-
-`global_hypothesis.json` is the auditable boundary between full-series visual reasoning and evidence verification. Example:
-
-```json
-{
-  "decision_id": "V0001",
-  "source": "candidate",
-  "candidate_id": "V0001",
-  "reviewed_interval": [1200, 1285],
-  "action": "refine",
-  "final_interval": [1214, 1271],
-  "confidence": 2,
-  "rationale": "..."
-}
-```
-
-Added regions use `source: "added"`, `candidate_id: null`, and `action: "add"`.
+The runtime screening threshold is chosen by configuration, never from ground-truth labels. Candidate sets for `alpha` in `{0.1, 0.01, 0.001}` are emitted; the selected set is `screening.alpha` (default `0.01`). To evaluate multiple thresholds, run the complete pipeline separately for each. This release does not recreate the paper's benchmark tables or repeated-run measurements.
 
 ## Evidence tools
 
-The evidence agent exposes seven read-only tools: `global_context`, `local_context`, `reference_context`, `raw_segment`, `stat_features`, `scale_view`, and `spike_scan`. Tool calls are adaptive rather than a fixed sequence. `reference_context` reuses the robust visual reference windows retained during screening whenever they are available, preserving the Stage-I→Agent evidence path.
+| Paper tool | Public tool name | Inputs and result |
+| --- | --- | --- |
+| Raw values | `raw` | Target interval, context and paging controls; exact consecutive numeric samples, never silent subsampling |
+| Focused plot | `focus` | Interval, context and local/shared y-range; high-resolution local plot |
+| References | `reference` | Interval, retrieval scale/count and plotting context; retained screening references, with shape retrieval as a fallback |
+| Statistics | `statistics` | Interval, predefined baseline and diagnostic; robust deviations or peak/trough diagnostics |
 
-Historical similarity and reference retention are retrieval evidence only. A retained or similar historical window is not automatically normal.
+Plot-scale options and spike diagnostics are modes within these four tools. The global image remains available through the response chain. Similar references can contain anomalies; similarity is not proof of normality. Long raw segments are returned in exact pages with `next_start` so omitted samples are explicit.
 
-## Reproducibility defaults
+## Outputs
 
-The visual screening stage uses three temporal scales (`224`, `448`, `672`), quarter-window stride, top-16 non-overlapping visual references, robust retention of four references, multi-scale patch discrepancy, robust positive normalization across scales, and equal scale fusion. See `configs/reva_default.yaml` for the public runtime configuration.
+Each run writes `screening.json`, `global_candidates.png`, `global_hypothesis.json`, `routing.json`, `api_calls.json`, per-target evidence records/images under `evidence/`, and `result.json`. API logs contain response IDs, parent IDs, status and usage; no keys or encoded image payloads. They are also written when inference fails. Use a fresh output directory for independent experiments.
 
-## Repository layout
+The public defaults retain the existing retrieval and rendering details: scales `{224,448,672}`, quarter-window stride, top-16 references, four robustly retained references, patch/mid/large visual neighborhoods, robust positive score normalization, equal scale fusion, smoothing, and 4096x512 global plots. See [the implementation contract](docs/PIPELINE.md) and [migration audit](docs/MIGRATION_20260924.md).
 
-```text
-src/reva/
-├── visual/              # rendering, visual encoder, reference-guided screening
-├── reasoning/           # prompts, global hypothesis, routing, evidence tools, agent
-├── config.py
-├── io.py
-├── pipeline.py
-└── cli.py
+## Tests
+
+```bash
+pip install -e '.[test]'
+python -m unittest discover -s tests -v
 ```
 
-The repository intentionally excludes one-off development experiments, private paths, cached outputs, API credentials, and prompt text tied to external comparison methods.
+Tests cover routing at the threshold, interval operations, four-tool dispatch, exact raw evidence, reference reuse, numerical patch/time alignment, end-to-end closure, and real OpenAI SDK serialization/retries using a mocked HTTP transport. Tests do not call a paid model API or require model weights.
+
+## Previous name
+
+The former project name was REVA. New imports, examples, config paths and package metadata use AgentVeriTS. The `reva` command and top-level `from reva import REVAConfig, REVAPipeline` remain deprecated aliases. Legacy internal module imports, discrete-confidence output files and old configuration files are not the current contract.

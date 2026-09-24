@@ -3,16 +3,17 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Sequence
 
-from .config import REVAConfig
+from .config import AgentVeriTSConfig
 from .io import write_json
-from .reasoning.evidence_agent import EvidenceAgent
+from .reasoning.agentic_verification import AgenticVerification
 from .reasoning.evidence_tools import EvidenceTools
-from .reasoning.global_hypothesis import GlobalHypothesisBuilder
+from .reasoning.candidate_assessment import CandidateAssessment
 from .reasoning.provider import OpenAIReasoningClient
 from .reasoning.router import UncertaintyRouter
-from .types import EvidenceDecision, GlobalDecision, Interval, REVAResult
+from .types import EvidenceDecision, GlobalDecision, Interval, AgentVeriTSResult
 from .visual.render import SeriesRenderer
 from .visual.screening import VisualScreening
+import numpy as np
 
 
 def _merge_intervals(intervals: Sequence[Interval]) -> list[Interval]:
@@ -37,32 +38,48 @@ def _direct_interval(decision: GlobalDecision) -> Interval | None:
     return decision.final_interval or decision.reviewed_interval
 
 
-class REVAPipeline:
+class AgentVeriTSPipeline:
     def __init__(
         self,
-        config: REVAConfig | None = None,
+        config: AgentVeriTSConfig | None = None,
         *,
         screening: VisualScreening | None = None,
         reasoning_client: OpenAIReasoningClient | None = None,
     ) -> None:
-        self.config = config or REVAConfig()
+        self.config = config or AgentVeriTSConfig()
+        self.config.validate()
         self.screening = screening or VisualScreening(self.config.screening)
         self.reasoning_client = reasoning_client or OpenAIReasoningClient(
             model=self.config.reasoning.model,
             reasoning_effort=self.config.reasoning.reasoning_effort,
             max_output_tokens=self.config.reasoning.max_output_tokens,
             store=self.config.reasoning.store_responses,
+            timeout_seconds=self.config.reasoning.timeout_seconds,
+            max_retries=self.config.reasoning.max_retries,
         )
         self.renderer = SeriesRenderer(self.config.render)
 
-    def run(
+    def run(self, values: Sequence[float], *, signal_id: str = "signal",
+            output_dir: str | Path = "outputs/agentverits") -> AgentVeriTSResult:
+        log = getattr(self.reasoning_client, "call_log", [])
+        start = len(log)
+        try:
+            return self._run(values, signal_id=signal_id, output_dir=output_dir)
+        finally:
+            # Persist IDs and usage even when a later response fails. No keys or image payloads.
+            write_json(Path(output_dir) / "api_calls.json", log[start:])
+
+    def _run(
         self,
         values: Sequence[float],
         *,
         signal_id: str = "signal",
-        output_dir: str | Path = "outputs/reva",
-    ) -> REVAResult:
+        output_dir: str | Path = "outputs/agentverits",
+    ) -> AgentVeriTSResult:
+        self.config.validate()
         values = list(float(x) for x in values)
+        if not np.isfinite(values).all():
+            raise ValueError("signal contains non-finite values; clean missing data before inference")
         if len(values) < max(self.config.screening.scales):
             raise ValueError(f"signal length must be >= {max(self.config.screening.scales)}")
 
@@ -98,7 +115,7 @@ class REVAPipeline:
             screening_result.selected_candidates,
             out / "global_candidates.png",
         )
-        global_hypothesis = GlobalHypothesisBuilder(self.reasoning_client).run(
+        global_hypothesis = CandidateAssessment(self.reasoning_client, self.config.reasoning.confidence_threshold).run(
             signal_id=signal_id,
             signal_length=len(values),
             candidates=screening_result.selected_candidates,
@@ -106,11 +123,12 @@ class REVAPipeline:
         )
         write_json(out / "global_hypothesis.json", global_hypothesis.as_dict())
 
-        routed = UncertaintyRouter().route(global_hypothesis)
+        routed = UncertaintyRouter(self.config.reasoning.confidence_threshold).route(global_hypothesis)
         write_json(
             out / "routing.json",
             {
-                "rule": "confidence 1/2 -> evidence agent; confidence 3 -> direct closure",
+                "rule": "q < confidence_threshold -> agentic verification; q >= threshold -> direct",
+                "confidence_threshold": self.config.reasoning.confidence_threshold,
                 "direct": [x.decision_id for x in routed.direct],
                 "uncertain": [x.decision_id for x in routed.uncertain],
             },
@@ -125,11 +143,11 @@ class REVAPipeline:
             reference_count=self.config.reasoning.reference_count,
             reference_traces=screening_result.reference_traces,
         )
-        agent = EvidenceAgent(
+        agent = AgenticVerification(
             self.reasoning_client,
             tools,
             max_tool_calls=self.config.reasoning.max_evidence_calls,
-            max_global_rescan_calls=self.config.reasoning.max_global_rescan_calls,
+            confidence_threshold=self.config.reasoning.confidence_threshold,
             signal_length=len(values),
         )
 
@@ -158,23 +176,14 @@ class REVAPipeline:
 
         provisional_intervals = _merge_intervals(provisional_intervals)
 
-        agent_discoveries, previous_response_id = agent.global_rescan(
-            global_hypothesis,
-            provisional_intervals,
-            previous_response_id=previous_response_id,
-        )
-        write_json(
-            out / "evidence" / "global_rescan.json",
-            {
-                "discoveries": [x.as_dict() for x in agent_discoveries],
-                "response_id": previous_response_id,
-            },
-        )
+        # Paper Eq. (8): direct high-confidence operations plus verified low-confidence outputs.
+        # ADD remains available inside verification, with no unconditional extra global pass.
+        agent_discoveries = [item for decision in evidence_decisions for item in decision.additions]
 
         final_intervals = _merge_intervals(
             provisional_intervals + [x.interval for x in agent_discoveries]
         )
-        result = REVAResult(
+        result = AgentVeriTSResult(
             final_intervals=final_intervals,
             global_hypothesis=global_hypothesis,
             evidence_decisions=evidence_decisions,

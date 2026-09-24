@@ -10,3 +10,5 @@ outputs/
 cache/
 *.npz
 *.npy
+build/
+dist/

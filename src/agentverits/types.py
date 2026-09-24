@@ -1,12 +1,26 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
+import math
+import re
+from numbers import Integral, Real
 from typing import Any, Literal
 
 
 Action = Literal["keep", "remove", "refine", "add"]
-FinalAction = Literal["keep", "remove", "refine"]
-ConfidenceLevel = Literal[1, 2, 3]
+FinalAction = Action
+
+
+def validate_confidence(value: Any) -> float:
+    if isinstance(value, bool) or not isinstance(value, Real) or not math.isfinite(value) or not 0 <= value <= 1:
+        raise ValueError("confidence must be a finite number in [0,1]")
+    return float(value)
+
+
+def validate_record_id(value: str) -> str:
+    if not isinstance(value, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,79}", value):
+        raise ValueError("record ID must be a safe alphanumeric identifier (up to 80 characters)")
+    return value
 
 
 @dataclass(frozen=True)
@@ -15,6 +29,8 @@ class Interval:
     end: int
 
     def __post_init__(self) -> None:
+        if any(isinstance(x, bool) or not isinstance(x, Integral) for x in (self.start, self.end)):
+            raise ValueError("interval endpoints must be integers")
         if self.start < 0 or self.end < self.start:
             raise ValueError(f"invalid interval [{self.start}, {self.end}]")
 
@@ -38,18 +54,20 @@ class GlobalDecision:
     reviewed_interval: Interval
     action: Action
     final_interval: Interval | None
-    confidence: ConfidenceLevel
+    confidence: float
     rationale: str
 
     def __post_init__(self) -> None:
-        if type(self.confidence) is not int or self.confidence not in {1, 2, 3}:
-            raise ValueError("confidence must be an integer in {1,2,3}")
+        self.confidence = validate_confidence(self.confidence)
+        validate_record_id(self.decision_id)
+        if self.action not in {"keep", "remove", "refine", "add"}:
+            raise ValueError("unknown global action")
 
     def as_dict(self) -> dict[str, Any]:
         out = asdict(self)
         out["reviewed_interval"] = self.reviewed_interval.as_list()
         out["final_interval"] = self.final_interval.as_list() if self.final_interval else None
-        out["confidence"] = int(self.confidence)
+        out["confidence"] = self.confidence
         return out
 
 
@@ -78,22 +96,30 @@ class EvidenceDecision:
     decision_id: str
     final_action: FinalAction
     final_interval: Interval | None
-    confidence: ConfidenceLevel
+    confidence: float
     rationale: str
     evidence_log: list[dict[str, Any]] = field(default_factory=list)
+    additions: list[AgentDiscovery] = field(default_factory=list)
+    response_id: str | None = None
 
     def __post_init__(self) -> None:
-        if type(self.confidence) is not int or self.confidence not in {1, 2, 3}:
-            raise ValueError("confidence must be an integer in {1,2,3}")
+        self.confidence = validate_confidence(self.confidence)
+        validate_record_id(self.decision_id)
+        if self.final_action not in {"keep", "remove", "refine", "add"}:
+            raise ValueError("unknown evidence action")
+        if (self.final_action == "remove") != (self.final_interval is None):
+            raise ValueError("only remove may have a null final_interval")
 
     def as_dict(self) -> dict[str, Any]:
         return {
             "decision_id": self.decision_id,
             "final_action": self.final_action,
             "final_interval": self.final_interval.as_list() if self.final_interval else None,
-            "confidence": int(self.confidence),
+            "confidence": self.confidence,
             "rationale": self.rationale,
             "evidence_log": self.evidence_log,
+            "additions": [x.as_dict() for x in self.additions],
+            "response_id": self.response_id,
         }
 
 
@@ -101,19 +127,19 @@ class EvidenceDecision:
 class AgentDiscovery:
     discovery_id: str
     interval: Interval
-    confidence: ConfidenceLevel
+    confidence: float
     rationale: str
     evidence_log: list[dict[str, Any]] = field(default_factory=list)
 
     def __post_init__(self) -> None:
-        if type(self.confidence) is not int or self.confidence not in {2, 3}:
-            raise ValueError("final global-rescan discoveries must have integer confidence 2 or 3")
+        self.confidence = validate_confidence(self.confidence)
+        validate_record_id(self.discovery_id)
 
     def as_dict(self) -> dict[str, Any]:
         return {
             "discovery_id": self.discovery_id,
             "interval": self.interval.as_list(),
-            "confidence": int(self.confidence),
+            "confidence": self.confidence,
             "rationale": self.rationale,
             "evidence_log": self.evidence_log,
         }
@@ -145,7 +171,7 @@ class ScreeningResult:
 
 
 @dataclass
-class REVAResult:
+class AgentVeriTSResult:
     final_intervals: list[Interval]
     global_hypothesis: GlobalHypothesis
     evidence_decisions: list[EvidenceDecision]

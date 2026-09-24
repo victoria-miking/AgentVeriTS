@@ -66,17 +66,13 @@ def _patch_bank_distance(query: torch.Tensor, refs: torch.Tensor, retained_count
 def _harmonic_aggregation(score_size: tuple[int, int, int], similarity: torch.Tensor, mask: torch.Tensor) -> torch.Tensor:
     b, h, w = score_size
     similarity = similarity.double().clamp_min(1e-12)
-    mask = mask.T.long()
-    score = torch.zeros((b, h * w), device=similarity.device, dtype=torch.float64)
-    for idx in range(h * w):
-        selected = torch.tensor(
-            [bool(torch.isin(torch.tensor(idx + 1, device=mask.device), row)) for row in mask],
-            device=similarity.device,
-        )
-        count = int(selected.sum().item())
-        if count:
-            score[:, idx] = count / torch.sum(1.0 / similarity[:, selected], dim=-1)
-    return score.view(b, h, w)
+    # Encoder masks are zero based. Build patch membership once, without per-patch GPU syncs.
+    ids = torch.arange(h * w, device=similarity.device)
+    membership = (mask.to(similarity.device).T[:, :, None] == ids[None, None, :]).any(dim=1).double()
+    counts = membership.sum(dim=0)
+    denominator = (1.0 / similarity) @ membership
+    score = torch.where(counts > 0, counts / denominator.clamp_min(1e-12), 0.0)
+    return score.reshape(b, h, w)
 
 
 def _aggregate_map(anomaly_map: np.ndarray, top_fraction: float) -> np.ndarray:
@@ -85,36 +81,29 @@ def _aggregate_map(anomaly_map: np.ndarray, top_fraction: float) -> np.ndarray:
     return np.sort(anomaly_map, axis=0)[-k:, :].mean(axis=0)
 
 
-def _stitch_image_vectors(maps: np.ndarray, step_ratio: float, top_fraction: float) -> np.ndarray:
-    vectors = np.stack([_aggregate_map(x, top_fraction) for x in maps])
-    width = vectors.shape[1]
-    step = int(width / float(step_ratio))
-    length = step * (len(vectors) - 1) + width
-    total = np.zeros(length, dtype=float)
-    count = np.zeros(length, dtype=float)
-    for i, vec in enumerate(vectors):
-        start = i * step
-        total[start:start + width] += vec
-        count[start:start + width] += 1
-    count[count == 0] = 1
-    return total / count
-
-
-def _align(vector: np.ndarray, full_length: int, window_size: int, step_size: int, n_windows: int) -> np.ndarray:
-    covered = window_size + (n_windows - 1) * step_size
-    if len(vector) == 1:
-        interp = np.full(covered, float(vector[0]))
-    else:
-        interp = np.interp(np.linspace(0, len(vector) - 1, covered), np.arange(len(vector)), vector)
-    if covered < full_length:
-        slope = (interp[-1] - interp[-2]) if covered > 1 else 0.0
-        tail = interp[-1] + slope * np.arange(1, full_length - covered + 1)
-        return np.concatenate([interp, tail])
-    return interp[:full_length]
+def _aligned_scores(maps: torch.Tensor, starts: np.ndarray, full_length: int, window_size: int,
+                    image_size: int, top_fraction: float, batch_size: int) -> np.ndarray:
+    """Paper Eq. (2): align/average overlapping maps before top-rho reduction."""
+    total = np.zeros((image_size, full_length), dtype=np.float32)
+    count = np.zeros(full_length, dtype=np.int32)
+    for lo in range(0, len(starts), batch_size):
+        dense = F.interpolate(maps[lo:lo + batch_size].unsqueeze(1).float(),
+                              size=(image_size, window_size), mode="bilinear", align_corners=False).squeeze(1)
+        for start, window in zip(starts[lo:lo + batch_size], dense.detach().cpu().numpy()):
+            total[:, start:start + window_size] += window
+            count[start:start + window_size] += 1
+    if np.any(count == 0):
+        raise ValueError("window grid leaves uncovered time points")
+    total /= count[None, :]
+    return _aggregate_map(total, top_fraction)
 
 
 def detection_intervals(scores: np.ndarray, alpha: float, smoothing: bool = True) -> tuple[list[Interval], float, np.ndarray]:
     x = np.asarray(scores, dtype=float)
+    if x.ndim != 1 or not x.size or not np.isfinite(x).all():
+        raise ValueError("scores must be a nonempty finite one-dimensional array")
+    if not 0 < float(alpha) < 1:
+        raise ValueError("alpha must be in (0,1)")
     if smoothing:
         span = max(1, int(len(x) * 0.01))
         x = pd.Series(x).ewm(span=span).mean().values
@@ -144,6 +133,7 @@ class ScaleResult:
 class VisualScreening:
     def __init__(self, config: ScreeningConfig | None = None, encoder: VisualEncoder | None = None) -> None:
         self.config = config or ScreeningConfig()
+        self.config.validate()
         self.encoder = encoder or VisualEncoder(
             model_name=self.config.encoder_name,
             pretrained=self.config.encoder_weights,
@@ -153,11 +143,11 @@ class VisualScreening:
         )
 
     def _encode_windows(self, windows: np.ndarray) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
-        tensors = np.stack([render_window_tensor(w, self.config.image_size) for w in windows])
         chunks = {"large": [], "mid": [], "patch": [], "class": []}
         large_mask = mid_mask = None
-        for start in range(0, len(tensors), self.config.batch_size):
-            batch = torch.from_numpy(tensors[start:start + self.config.batch_size])
+        for start in range(0, len(windows), self.config.batch_size):
+            tensors = np.stack([render_window_tensor(w, self.config.image_size) for w in windows[start:start + self.config.batch_size]])
+            batch = torch.from_numpy(tensors)
             out = self.encoder.encode(batch)
             chunks["large"].append(out.large_tokens.detach().cpu())
             chunks["mid"].append(out.mid_tokens.detach().cpu())
@@ -175,8 +165,10 @@ class VisualScreening:
     def _score_scale(self, values: np.ndarray, scale: int) -> ScaleResult:
         step = max(1, int(scale / self.config.step_ratio))
         starts = np.arange(0, len(values) - scale + 1, step, dtype=np.int64)
-        if len(starts) < 2:
+        if not len(starts):
             raise ValueError(f"signal is too short for scale {scale}")
+        if starts[-1] != len(values) - scale:
+            starts = np.append(starts, len(values) - scale)
         windows = np.stack([values[s:s + scale] for s in starts]).astype(np.float32)
         large, mid, patch, class_tokens, large_mask, mid_mask = self._encode_windows(windows)
         device = self.encoder.device
@@ -212,9 +204,8 @@ class VisualScreening:
         mid_map = _harmonic_aggregation((len(starts), side, side), m, mid_mask.to(device))
         large_map = _harmonic_aggregation((len(starts), side, side), l, large_mask.to(device))
         fused_map = torch.nan_to_num((patch_map.double() + mid_map + large_map) / 3.0)
-        dense = F.interpolate(fused_map.unsqueeze(1).float(), size=(self.config.image_size, self.config.image_size), mode="bilinear").squeeze(1)
-        stitched = _stitch_image_vectors(dense.detach().cpu().numpy(), self.config.step_ratio, self.config.aggregate_top_fraction)
-        aligned = _align(stitched, len(values), scale, step, len(starts))
+        aligned = _aligned_scores(fused_map, starts, len(values), scale, self.config.image_size,
+                                  self.config.aggregate_top_fraction, self.config.batch_size)
         return ScaleResult(
             scale=scale,
             scores=aligned,
@@ -223,6 +214,7 @@ class VisualScreening:
         )
 
     def run(self, raw_values: Sequence[float]) -> ScreeningResult:
+        self.config.validate()
         values = preprocess_series(raw_values)
         per_scale = [self._score_scale(values, int(scale)) for scale in self.config.scales]
         normalized = [robust_positive_z(x.scores) for x in per_scale]
@@ -238,7 +230,7 @@ class VisualScreening:
             for item in per_scale
         }
         candidate_sets: dict[str, list[VisualCandidate]] = {}
-        selected: list[VisualCandidate] = []
+        selected: list[VisualCandidate] | None = None
         for alpha in self.config.alpha_candidates:
             intervals, _, processed = detection_intervals(fused, alpha, self.config.smoothing)
             rows = [
@@ -253,7 +245,7 @@ class VisualScreening:
             candidate_sets[f"{alpha:g}"] = rows
             if abs(float(alpha) - float(self.config.alpha)) < 1e-12:
                 selected = rows
-        if not selected:
+        if selected is None:
             intervals, _, processed = detection_intervals(fused, self.config.alpha, self.config.smoothing)
             selected = [
                 VisualCandidate(f"V{i + 1:04d}", interval, float(self.config.alpha), float(np.max(processed[interval.start:interval.end + 1])))

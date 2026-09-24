@@ -18,10 +18,12 @@ reasoning:
   reasoning_effort: medium
   max_output_tokens: 5000
   max_evidence_calls: 3
-  max_global_rescan_calls: 3
+  confidence_threshold: 0.95
   context_points: 256
   reference_count: 4
   store_responses: true
+  timeout_seconds: 120.0
+  max_retries: 2
 render:
   global_width_px: 4096
   global_height_px: 512
