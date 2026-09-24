@@ -101,6 +101,3 @@ python -m unittest discover -s tests -v
 
 Tests cover routing at the threshold, interval operations, four-tool dispatch, exact raw evidence, reference reuse, numerical patch/time alignment, end-to-end closure, and real OpenAI SDK serialization/retries using a mocked HTTP transport. Tests do not call a paid model API or require model weights.
 
-## Previous name
-
-The former project name was REVA. New imports, examples, config paths and package metadata use AgentVeriTS. The `reva` command and top-level `from reva import REVAConfig, REVAPipeline` remain deprecated aliases. Legacy internal module imports, discrete-confidence output files and old configuration files are not the current contract.
