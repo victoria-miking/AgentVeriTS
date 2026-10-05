@@ -1,103 +1,158 @@
-# AgentVeriTS
+<h1 align="center">AgentVeriTS</h1>
 
-**AgentVeriTS: Confidence-Guided Agentic Verification for Time-Series Anomaly Detection**
+<p align="center">
+  <strong>Confidence-Guided Agentic Verification<br>for Time-Series Anomaly Detection</strong>
+</p>
 
-Public inference implementation for univariate time-series anomaly detection.
-Repository: [victoria-miking/AgentVeriTS](https://github.com/victoria-miking/AgentVeriTS).
+<p align="center">
+  Screen candidate anomalies · Assess them in global context · Verify uncertain decisions with evidence
+</p>
 
-## Method
+<p align="center">
+  <a href="https://github.com/victoria-miking/AgentVeriTS/actions/workflows/contract-tests.yml"><img src="https://github.com/victoria-miking/AgentVeriTS/actions/workflows/contract-tests.yml/badge.svg" alt="Tests"></a>
+  <img src="https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white" alt="Python 3.10 or later">
+  <img src="https://img.shields.io/badge/Framework-PyTorch-EE4C2C?logo=pytorch&logoColor=white" alt="PyTorch">
+</p>
 
-The implementation follows the paper's three modules:
+<p align="center">
+  <a href="#overview">Overview</a> ·
+  <a href="#main-results">Main results</a> ·
+  <a href="#qualitative-comparison">Case studies</a> ·
+  <a href="#quick-start">Quick start</a> ·
+  <a href="#documentation">Documentation</a>
+</p>
 
-1. **Anomaly Screening** renders overlapping multi-scale windows and uses a frozen CLIP ViT-B/16 encoder. Similar non-overlapping reference windows form a query-specific patch bank. Patch discrepancies are aligned and aggregated into a temporal anomaly map; top-25% visual responses produce point scores, and a Gaussian-quantile threshold produces candidate intervals.
-2. **Candidate Assessment** jointly reviews every candidate in one full-series image and may propose missed intervals. Each hypothesis contains an interval, an operation (`keep`, `remove`, `refine`, `add`), numeric confidence **q in [0,1]**, and a brief rationale.
-3. **Agentic Verification** verifies only hypotheses with **q < 0.95** by adaptively requesting evidence. Decisions with **q >= 0.95** bypass verification and retain their operation. Verified intervals and retained high-confidence intervals are merged into the final result (paper Eq. 8).
+AgentVeriTS detects anomalies in **univariate time series** by combining visual screening, global candidate assessment, and selective agentic verification. When a judgment remains uncertain, the agent chooses evidence tools to inspect raw values, focused plots, historical references, or statistical deviations before confirming or revising the anomaly interval.
 
-Confidence describes support for the selected operation and its boundaries, including a removal decision. It is a model judgment, not a calibrated probability. The threshold is configurable; `0.95` is the paper default. Action type alone does not trigger verification.
+| Average F1 | Improvement over the strongest baseline | Dataset-level ranking |
+| :---: | :---: | :---: |
+| **0.7906 ± 0.0045** | **+7.16%** relative to VLM4TS | **3 best · 4 second-best** |
 
-The agent can discover and add missed anomalies while verifying uncertain hypotheses. There is no unconditional extra global-rescan pass. Global context is retained across all uncertain targets in one signal, rather than reopening independent conversations.
+*Highlights from the paper: seven datasets and seven comparison methods.*
 
-## Installation
+## Overview
 
-Python 3.10+ is supported. Install a PyTorch/torchvision build suitable for your device before installing the package if needed.
+[![AgentVeriTS mechanism: visual anomaly screening, global candidate assessment, confidence-based routing, and an evidence acquisition loop producing final intervals.](docs/assets/mechanism-overview.png)](docs/assets/mechanism-overview.png)
+
+*Figure 1 from the paper. Click the figure to inspect the full-resolution image.*
+
+| Module | What it does | Output |
+| :--- | :--- | :--- |
+| **Anomaly Screening** | A frozen visual encoder compares multi-scale time-series windows with a retrieved reference patch bank. | Candidate anomaly intervals |
+| **Candidate Assessment** | A VLM jointly evaluates the candidates in the full-series view and can identify missed anomalies. | Global hypotheses with an operation, confidence, and rationale |
+| **Agentic Verification** | The agent acquires additional evidence for judgments with confidence **q < 0.95**, while retaining the shared global context. | Verified decisions merged with high-confidence decisions |
+
+The four interval operations are **KEEP**, **REMOVE**, **REFINE**, and **ADD**. Judgments with **q ≥ 0.95** retain their operation and bypass verification. Confidence is in **[0, 1]** and describes support for the chosen operation, including removal; it is not a calibrated probability. The threshold is configurable.
+
+During verification, the agent can request `raw`, `focus`, `reference`, and `statistics` evidence and add missed anomalies. Decisions remain connected within one signal through the official Responses API and `previous_response_id`. See the [method and implementation contract](docs/PIPELINE.md) for details.
+
+## Main results
+
+**F1 ↑ on seven datasets**, transcribed from Table 1 of the paper. **Bold** marks the best result; <ins>underlining</ins> marks the second-best. The compact table shows means; the original table below includes all standard deviations.
+
+| Method | IOPS | WSD | Art | AWS | Tweets | MSL | SMAP | Average |
+| :--- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| TimeRadar | 0.4918 | 0.7714 | 0.5337 | 0.6875 | 0.6566 | 0.6280 | 0.5176 | 0.6124 |
+| AER | 0.3955 | 0.6201 | 0.8611 | **0.7771** | 0.7106 | 0.7264 | 0.7132 | 0.6863 |
+| TimesFM-2.5 | 0.2126 | 0.1171 | 0.2500 | 0.6178 | 0.4938 | 0.4547 | 0.6155 | 0.3945 |
+| PaAno | 0.4840 | <ins>0.7847</ins> | 0.4405 | 0.5272 | 0.2501 | 0.4855 | 0.7210 | 0.5276 |
+| MMPAD | 0.2956 | 0.3954 | **0.9444** | 0.3781 | 0.1558 | 0.2182 | 0.5218 | 0.4156 |
+| ViT4TS | 0.4956 | 0.4220 | 0.4450 | 0.5580 | 0.6565 | 0.6922 | 0.7735 | 0.5775 |
+| VLM4TS | <ins>0.5606</ins> | 0.7507 | 0.8333 | 0.6924 | <ins>0.7115</ins> | **0.7594** | **0.8567** | <ins>0.7378</ins> |
+| **AgentVeriTS** | **0.6770** | **0.8150** | <ins>0.9167</ins> | <ins>0.7630</ins> | **0.7591** | <ins>0.7488</ins> | <ins>0.8549</ins> | **0.7906** |
+
+IOPS and WSD are from TSB-AD; Art, AWS, and Tweets are from NAB; MSL and SMAP are from NASA. AgentVeriTS ranks first on IOPS, WSD, and Tweets, and second on the other four datasets. Its average F1 increases from **0.7378 to 0.7906**, a **7.16% relative improvement** over VLM4TS.
+
+<details>
+<summary><strong>View the original Table 1 with mean ± standard deviation</strong></summary>
+
+[![Original Table 1 from the paper, containing every dataset result and its standard deviation over repeated runs.](docs/assets/main-results.png)](docs/assets/main-results.png)
+
+Results are reported as **μ ± σ** over repeated runs. ViT4TS uses deterministic inference and has zero standard deviation. Click the table to read it at full resolution.
+
+</details>
+
+<details>
+<summary><strong>Ablation study — contribution of each module</strong></summary>
+
+Table 2 from the paper. NAB and NASA columns contain the paper's source-group aggregates; the Average column is reproduced as reported.
+
+| Variant | IOPS | WSD | NAB | NASA | Average |
+| :--- | ---: | ---: | ---: | ---: | ---: |
+| w/o Candidate Assessment | 0.4313 | 0.5093 | 0.4829 | 0.5498 | 0.4984 |
+| w/o Agentic Verification | 0.6619 | 0.6879 | 0.7865 | 0.7973 | 0.7577 |
+| Anomaly Screening Only | 0.6561 | 0.7892 | 0.7223 | 0.7831 | 0.7398 |
+| **AgentVeriTS** | **0.6770** | **0.8150** | **0.8129** | **0.8018** | **0.7906** |
+
+The full method improves on screening alone and on the variant without evidence verification. Removing joint candidate assessment and using independent candidate-wise reasoning substantially reduces performance.
+
+</details>
+
+<details>
+<summary><strong>Inference efficiency — runtime and detection quality</strong></summary>
+
+Table 3 from the paper, measured in the reported Windows / RTX 5090 setup with the same GPT-5.6-sol backend for both methods.
+
+| Method | Screening (s) ↓ | LLM/VLM (s) ↓ | Total (s) ↓ | F1 ↑ |
+| :--- | ---: | ---: | ---: | ---: |
+| VLM4TS | 42.65 | **2.57** | 45.22 | 0.7378 |
+| **AgentVeriTS** | **23.86** | 13.72 | **37.58** | **0.7906** |
+
+The paper reports **16.9% lower total runtime** alongside the improvement in average F1. These timings are tied to the paper's experimental setup.
+
+</details>
+
+*All results and timings above are reported manuscript measurements. They have not been remeasured on the current public code revision; see the [implementation audit](docs/MIGRATION_20260924.md) for validation scope.*
+
+## Qualitative comparison
+
+[![Figure 3: VLM4TS and AgentVeriTS predictions on IOPS-267 and WSD-042, showing a suppressed false alarm, refined boundaries, and recovered short anomalies.](docs/assets/qualitative-comparison.png)](docs/assets/qualitative-comparison.png)
+
+*Figure 3 from the paper. Top: VLM4TS. Bottom: AgentVeriTS. Red indicates ground truth, blue indicates detected intervals, and grey indicates detected hits.*
+
+- **IOPS-267:** suppresses a false alarm at a normal periodic transition and refines an overly broad anomaly interval.
+- **WSD-042:** recovers two short spikes that are difficult to distinguish in the global trend by inspecting focused local evidence.
+
+## Quick start
+
+Use **Python 3.10+** and install a PyTorch/torchvision build suitable for your device. From the repository root:
 
 ```bash
 pip install -r requirements.txt
 pip install -e .
 ```
 
-The public dependency pins are in `pyproject.toml` and `requirements.txt`. The first screening run downloads the pretrained OpenCLIP weights. No labeled training data is consumed.
-
-## Official OpenAI API
-
-Use an **official OpenAI API key**:
+Set an official OpenAI API key:
 
 ```bash
 export OPENAI_API_KEY="your-api-key"
 ```
 
-Windows PowerShell:
+For Windows PowerShell, use `$env:OPENAI_API_KEY="your-api-key"`.
 
-```powershell
-$env:OPENAI_API_KEY="your-api-key"
-```
-
-The client uses the official SDK and `https://api.openai.com/v1/responses`. `OPENAI_BASE_URL` does not override that endpoint. The default model is the paper's `gpt-5.6-sol`; access depends on your API account.
-
-- Candidate assessment starts a stored response with `store=True`.
-- Each verification request sends `previous_response_id` plus only the new target or evidence observation and new images.
-- The latest response ID is carried across tool rounds and uncertain targets. Each signal starts its own chain.
-- Instructions are supplied on every request. GPT-5.6-family requests also use `reasoning.context=all_turns` for available compatible reasoning state.
-- The SDK handles bounded transient retries. Refused, incomplete or invalid responses fail explicitly. A missing/expired parent response never silently falls back to a fresh conversation or manual history reconstruction.
-
-Tool selection follows the paper's **structured action/observation protocol**: the model returns a closed JSON action, the local system executes the selected evidence tool, and the next response receives its observation. This uses official Responses structured outputs; it does not claim native function-call events. See [API details](docs/OPENAI_API.md).
-
-## Input and execution
-
-Input is a CSV with a `value` column and an optional `timestamp` column. The aliases `data`, `kpi`, `metric`, and `y` are recognized. A single unnamed numeric signal column is also accepted after excluding time and label columns; ambiguous input is rejected. CSV gaps are interpolated, with endpoint filling. Direct Python input must be finite. Intervals use **zero-based, inclusive endpoints**.
+Run on your CSV, replacing `path/to/series.csv` with an existing file containing a `value` column and an optional `timestamp` column:
 
 ```bash
-agentverits --input data/example.csv \
+agentverits --input path/to/series.csv \
   --config configs/agentverits_default.yaml \
   --output-dir outputs/example
-
-agentverits --input data/example.csv --alpha 0.01 \
-  --model gpt-5.6-sol --confidence-threshold 0.95
 ```
 
-```python
-from agentverits import AgentVeriTSConfig, AgentVeriTSPipeline
+The first screening run downloads pretrained OpenCLIP weights. The default API model is `gpt-5.6-sol`; model access depends on your account. Final intervals are written to `result.json`, alongside screening results, global hypotheses, evidence images, and API audit records. Intervals use **zero-based, inclusive endpoints**.
 
-config = AgentVeriTSConfig.from_yaml("configs/agentverits_default.yaml")
-result = AgentVeriTSPipeline(config).run(values, signal_id="example", output_dir="outputs/example")
-print([interval.as_list() for interval in result.final_intervals])
-```
+For CSV aliases, Python usage, threshold selection, output details, and tests, see the [usage guide](docs/USAGE.md).
 
-The runtime screening threshold is chosen by configuration, never from ground-truth labels. Candidate sets for `alpha` in `{0.1, 0.01, 0.001}` are emitted; the selected set is `screening.alpha` (default `0.01`). To evaluate multiple thresholds, run the complete pipeline separately for each. This release does not recreate the paper's benchmark tables or repeated-run measurements.
+## Documentation
 
-## Evidence tools
+| Resource | Contents |
+| :--- | :--- |
+| [Usage guide](docs/USAGE.md) | Installation, CLI and Python examples, input format, outputs, and tests |
+| [Method and implementation](docs/PIPELINE.md) | Paper-to-code mapping, scoring, confidence routing, and evidence tools |
+| [Official API integration](docs/OPENAI_API.md) | Response continuity, structured outputs, retries, and failure handling |
+| [Default configuration](configs/agentverits_default.yaml) | Screening scales, confidence threshold, model, and tool budgets |
+| [Implementation audit](docs/MIGRATION_20260924.md) | Correctness fixes, retained details, compatibility, and validation scope |
+| [Figure sources](docs/assets/README.md) | Provenance of the manuscript figures and table reproduced here |
 
-| Paper tool | Public tool name | Inputs and result |
-| --- | --- | --- |
-| Raw values | `raw` | Target interval, context and paging controls; exact consecutive numeric samples, never silent subsampling |
-| Focused plot | `focus` | Interval, context and local/shared y-range; high-resolution local plot |
-| References | `reference` | Interval, retrieval scale/count and plotting context; retained screening references, with shape retrieval as a fallback |
-| Statistics | `statistics` | Interval, predefined baseline and diagnostic; robust deviations or peak/trough diagnostics |
+---
 
-Plot-scale options and spike diagnostics are modes within these four tools. The global image remains available through the response chain. Similar references can contain anomalies; similarity is not proof of normality. Long raw segments are returned in exact pages with `next_start` so omitted samples are explicit.
-
-## Outputs
-
-Each run writes `screening.json`, `global_candidates.png`, `global_hypothesis.json`, `routing.json`, `api_calls.json`, per-target evidence records/images under `evidence/`, and `result.json`. API logs contain response IDs, parent IDs, status and usage; no keys or encoded image payloads. They are also written when inference fails. Use a fresh output directory for independent experiments.
-
-The public defaults retain the existing retrieval and rendering details: scales `{224,448,672}`, quarter-window stride, top-16 references, four robustly retained references, patch/mid/large visual neighborhoods, robust positive score normalization, equal scale fusion, smoothing, and 4096x512 global plots. See [the implementation contract](docs/PIPELINE.md) and [migration audit](docs/MIGRATION_20260924.md).
-
-## Tests
-
-```bash
-pip install -e '.[test]'
-python -m unittest discover -s tests -v
-```
-
-Tests cover routing at the threshold, interval operations, four-tool dispatch, exact raw evidence, reference reuse, numerical patch/time alignment, end-to-end closure, and real OpenAI SDK serialization/retries using a mocked HTTP transport. Tests do not call a paid model API or require model weights.
-
+<p align="center"><a href="#agentverits">Back to top ↑</a></p>
