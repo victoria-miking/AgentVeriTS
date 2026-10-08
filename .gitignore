@@ -12,3 +12,6 @@ cache/
 *.npy
 build/
 dist/
+
+# Downloaded datasets, converted signals, and local ground-truth files.
+/data/

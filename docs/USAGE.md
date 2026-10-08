@@ -39,7 +39,11 @@ Tool selection follows the paper's **structured action/observation protocol**: t
 
 ## Input and execution
 
+For the seven datasets used in the paper, see the [dataset preparation guide](DATASETS.md): sources, downloads, suggested local directories, conversion, and ground-truth alignment. Datasets are downloaded separately and are not bundled with this repository.
+
 Input is a CSV with a `value` column and an optional `timestamp` column. The aliases `data`, `kpi`, `metric`, and `y` are recognized. A single unnamed numeric signal column is also accepted after excluding time and label columns; ambiguous input is rejected. CSV gaps are interpolated, with endpoint filling. Direct Python input must be finite. Intervals use **zero-based, inclusive endpoints**.
+
+CSV files must include a header. Rows are consumed in file order; the loader does not sort or resample timestamps. Labels are not passed to inference. Use one signal per file and keep its evaluation labels aligned with the same rows.
 
 ```bash
 agentverits --input data/example.csv \

@@ -18,6 +18,7 @@
   <a href="#overview">Overview</a> ·
   <a href="#main-results">Main results</a> ·
   <a href="#qualitative-comparison">Case studies</a> ·
+  <a href="#datasets">Datasets</a> ·
   <a href="#quick-start">Quick start</a> ·
   <a href="#documentation">Documentation</a>
 </p>
@@ -113,6 +114,24 @@ The paper reports **16.9% lower total runtime** alongside the improvement in ave
 - **IOPS-267:** suppresses a false alarm at a normal periodic transition and refines an overly broad anomaly interval.
 - **WSD-042:** recovers two short spikes that are difficult to distinguish in the global trend by inspecting focused local evidence.
 
+## Datasets
+
+**Download the data locally; this repository does not redistribute datasets.** IOPS and WSD use the **TSB-AD** release. For the other five datasets, follow the dataset naming and download route in [VLM4TS](https://github.com/ZLHe0/VLM4TS).
+
+| Paper name | Source | Download selection | Signal type |
+| :--- | :--- | :--- | :--- |
+| **IOPS** | [TSB-AD](https://github.com/thedatumorg/TSB-AD/blob/main/Datasets/README.md) | IOPS files in `TSB-AD-U` | Operational KPI series |
+| **WSD** | [TSB-AD](https://github.com/thedatumorg/TSB-AD/blob/main/Datasets/README.md) | WSD files in `TSB-AD-U` | Web-service metrics |
+| **Art** | [NAB](https://github.com/numenta/NAB) via VLM4TS / Orion | `artificialWithAnomaly` | Synthetic anomaly patterns |
+| **AWS** | [NAB](https://github.com/numenta/NAB) via VLM4TS / Orion | `realAWSCloudwatch` | Cloud infrastructure metrics |
+| **Tweets** | [NAB](https://github.com/numenta/NAB) via VLM4TS / Orion | `realTweets` | Company-related tweet volumes |
+| **MSL** | [NASA / Telemanom](https://github.com/khundman/telemanom) via VLM4TS / Orion | `MSL` | Mars Science Laboratory telemetry |
+| **SMAP** | [NASA / Telemanom](https://github.com/khundman/telemanom) via VLM4TS / Orion | `SMAP` | Soil Moisture Active Passive telemetry |
+
+Keep downloads under `data/raw/` and converted files under `data/processed/`; `data/` is ignored by Git. Each input CSV must have a header and one signal, preferably named `value`, with an optional `timestamp` column. Ground-truth labels are used only for external evaluation.
+
+**[Dataset preparation guide →](docs/DATASETS.md)** — download commands, local paths, CSV examples, TSB-AD conversion, and label alignment.
+
 ## Quick start
 
 Use **Python 3.10+** and install a PyTorch/torchvision build suitable for your device. From the repository root:
@@ -130,7 +149,7 @@ export OPENAI_API_KEY="your-api-key"
 
 For Windows PowerShell, use `$env:OPENAI_API_KEY="your-api-key"`.
 
-Run on your CSV, replacing `path/to/series.csv` with an existing file containing a `value` column and an optional `timestamp` column:
+Prepare a CSV using the [dataset guide](docs/DATASETS.md), then replace `path/to/series.csv` with its local path. The file should contain a `value` column and an optional `timestamp` column:
 
 ```bash
 agentverits --input path/to/series.csv \
@@ -147,6 +166,7 @@ For CSV aliases, Python usage, threshold selection, output details, and tests, s
 | Resource | Contents |
 | :--- | :--- |
 | [Usage guide](docs/USAGE.md) | Installation, CLI and Python examples, input format, outputs, and tests |
+| [Dataset preparation](docs/DATASETS.md) | Dataset sources, download commands, local layout, CSV format, and labels |
 | [Method and implementation](docs/PIPELINE.md) | Paper-to-code mapping, scoring, confidence routing, and evidence tools |
 | [Official API integration](docs/OPENAI_API.md) | Response continuity, structured outputs, retries, and failure handling |
 | [Default configuration](configs/agentverits_default.yaml) | Screening scales, confidence threshold, model, and tool budgets |
