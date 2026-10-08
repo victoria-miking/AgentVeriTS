@@ -116,7 +116,7 @@ The paper reports **16.9% lower total runtime** alongside the improvement in ave
 
 ## Datasets
 
-**Download the data locally; this repository does not redistribute datasets.** IOPS and WSD use the **TSB-AD** release. For the other five datasets, follow the dataset naming and download route in [VLM4TS](https://github.com/ZLHe0/VLM4TS).
+**Download the data locally; this repository does not redistribute datasets.** 
 
 | Paper name | Source | Download selection | Signal type |
 | :--- | :--- | :--- | :--- |
