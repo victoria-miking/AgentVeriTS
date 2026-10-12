@@ -1,0 +1,1013 @@
+{
+  "count": 252,
+  "signals": [
+    {
+      "dataset": "IOPS",
+      "signal_id": "260_IOPS_id_1_WebService_tr_5000_1st_11804"
+    },
+    {
+      "dataset": "IOPS",
+      "signal_id": "261_IOPS_id_2_WebService_tr_2178_1st_2278"
+    },
+    {
+      "dataset": "IOPS",
+      "signal_id": "262_IOPS_id_3_WebService_tr_7028_1st_7128"
+    },
+    {
+      "dataset": "IOPS",
+      "signal_id": "263_IOPS_id_4_WebService_tr_3482_1st_3582"
+    },
+    {
+      "dataset": "IOPS",
+      "signal_id": "264_IOPS_id_5_WebService_tr_11665_1st_11765"
+    },
+    {
+      "dataset": "IOPS",
+      "signal_id": "265_IOPS_id_6_WebService_tr_6453_1st_6553"
+    },
+    {
+      "dataset": "IOPS",
+      "signal_id": "266_IOPS_id_7_WebService_tr_4010_1st_4110"
+    },
+    {
+      "dataset": "IOPS",
+      "signal_id": "267_IOPS_id_8_WebService_tr_1534_1st_1882"
+    },
+    {
+      "dataset": "IOPS",
+      "signal_id": "268_IOPS_id_9_WebService_tr_6216_1st_6316"
+    },
+    {
+      "dataset": "IOPS",
+      "signal_id": "269_IOPS_id_10_WebService_tr_1216_1st_1728"
+    },
+    {
+      "dataset": "IOPS",
+      "signal_id": "270_IOPS_id_11_WebService_tr_5638_1st_5738"
+    },
+    {
+      "dataset": "IOPS",
+      "signal_id": "271_IOPS_id_12_WebService_tr_500_1st_341"
+    },
+    {
+      "dataset": "IOPS",
+      "signal_id": "272_IOPS_id_13_WebService_tr_3442_1st_3542"
+    },
+    {
+      "dataset": "IOPS",
+      "signal_id": "273_IOPS_id_14_WebService_tr_5569_1st_5669"
+    },
+    {
+      "dataset": "IOPS",
+      "signal_id": "274_IOPS_id_15_WebService_tr_4591_1st_4691"
+    },
+    {
+      "dataset": "IOPS",
+      "signal_id": "275_IOPS_id_16_WebService_tr_1482_1st_1582"
+    },
+    {
+      "dataset": "IOPS",
+      "signal_id": "276_IOPS_id_17_WebService_tr_19197_1st_19297"
+    },
+    {
+      "dataset": "MSL",
+      "signal_id": "C-1"
+    },
+    {
+      "dataset": "MSL",
+      "signal_id": "C-2"
+    },
+    {
+      "dataset": "MSL",
+      "signal_id": "D-14"
+    },
+    {
+      "dataset": "MSL",
+      "signal_id": "D-15"
+    },
+    {
+      "dataset": "MSL",
+      "signal_id": "D-16"
+    },
+    {
+      "dataset": "MSL",
+      "signal_id": "F-4"
+    },
+    {
+      "dataset": "MSL",
+      "signal_id": "F-5"
+    },
+    {
+      "dataset": "MSL",
+      "signal_id": "F-7"
+    },
+    {
+      "dataset": "MSL",
+      "signal_id": "F-8"
+    },
+    {
+      "dataset": "MSL",
+      "signal_id": "M-1"
+    },
+    {
+      "dataset": "MSL",
+      "signal_id": "M-2"
+    },
+    {
+      "dataset": "MSL",
+      "signal_id": "M-3"
+    },
+    {
+      "dataset": "MSL",
+      "signal_id": "M-4"
+    },
+    {
+      "dataset": "MSL",
+      "signal_id": "M-5"
+    },
+    {
+      "dataset": "MSL",
+      "signal_id": "M-6"
+    },
+    {
+      "dataset": "MSL",
+      "signal_id": "M-7"
+    },
+    {
+      "dataset": "MSL",
+      "signal_id": "P-10"
+    },
+    {
+      "dataset": "MSL",
+      "signal_id": "P-11"
+    },
+    {
+      "dataset": "MSL",
+      "signal_id": "P-14"
+    },
+    {
+      "dataset": "MSL",
+      "signal_id": "P-15"
+    },
+    {
+      "dataset": "MSL",
+      "signal_id": "S-2"
+    },
+    {
+      "dataset": "MSL",
+      "signal_id": "T-12"
+    },
+    {
+      "dataset": "MSL",
+      "signal_id": "T-13"
+    },
+    {
+      "dataset": "MSL",
+      "signal_id": "T-4"
+    },
+    {
+      "dataset": "MSL",
+      "signal_id": "T-5"
+    },
+    {
+      "dataset": "MSL",
+      "signal_id": "T-8"
+    },
+    {
+      "dataset": "MSL",
+      "signal_id": "T-9"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "A-1"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "A-2"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "A-3"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "A-4"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "A-5"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "A-6"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "A-7"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "A-8"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "A-9"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "B-1"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "D-1"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "D-11"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "D-12"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "D-13"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "D-2"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "D-3"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "D-4"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "D-5"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "D-6"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "D-7"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "D-8"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "D-9"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "E-1"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "E-10"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "E-11"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "E-12"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "E-13"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "E-2"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "E-3"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "E-4"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "E-5"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "E-6"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "E-7"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "E-8"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "E-9"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "F-1"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "F-2"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "F-3"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "G-1"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "G-2"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "G-3"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "G-4"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "G-6"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "G-7"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "P-1"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "P-3"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "P-4"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "P-7"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "R-1"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "S-1"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "T-1"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "T-2"
+    },
+    {
+      "dataset": "SMAP",
+      "signal_id": "T-3"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "029_WSD_id_1_WebService_tr_4559_1st_10201"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "030_WSD_id_2_WebService_tr_4499_1st_4599"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "031_WSD_id_3_WebService_tr_826_1st_926"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "032_WSD_id_4_WebService_tr_4559_1st_11822"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "033_WSD_id_5_WebService_tr_4559_1st_12588"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "034_WSD_id_6_WebService_tr_4559_1st_8461"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "035_WSD_id_7_WebService_tr_4555_1st_11911"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "036_WSD_id_8_WebService_tr_4504_1st_6898"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "037_WSD_id_9_WebService_tr_4583_1st_6214"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "038_WSD_id_10_WebService_tr_4042_1st_4142"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "039_WSD_id_11_WebService_tr_1746_1st_1846"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "040_WSD_id_12_WebService_tr_4559_1st_9714"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "041_WSD_id_13_WebService_tr_4296_1st_5196"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "042_WSD_id_14_WebService_tr_3015_1st_3115"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "043_WSD_id_15_WebService_tr_4521_1st_6828"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "044_WSD_id_16_WebService_tr_4559_1st_6975"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "045_WSD_id_17_WebService_tr_2566_1st_2666"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "046_WSD_id_18_WebService_tr_2357_1st_2457"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "047_WSD_id_19_WebService_tr_4559_1st_16362"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "048_WSD_id_20_WebService_tr_4559_1st_11813"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "049_WSD_id_21_WebService_tr_4297_1st_7097"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "050_WSD_id_22_WebService_tr_4559_1st_12816"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "051_WSD_id_23_WebService_tr_3919_1st_5154"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "052_WSD_id_24_WebService_tr_4559_1st_9102"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "053_WSD_id_25_WebService_tr_4559_1st_9198"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "054_WSD_id_26_WebService_tr_2409_1st_2509"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "055_WSD_id_27_WebService_tr_3768_1st_3868"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "056_WSD_id_28_WebService_tr_4559_1st_9689"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "057_WSD_id_29_WebService_tr_2229_1st_2329"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "058_WSD_id_30_WebService_tr_1136_1st_1236"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "059_WSD_id_31_WebService_tr_4559_1st_9058"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "060_WSD_id_32_WebService_tr_4576_1st_4766"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "061_WSD_id_33_WebService_tr_4559_1st_9722"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "062_WSD_id_34_WebService_tr_3371_1st_3471"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "063_WSD_id_35_WebService_tr_2290_1st_2390"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "064_WSD_id_36_WebService_tr_4559_1st_10195"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "065_WSD_id_37_WebService_tr_3451_1st_3551"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "066_WSD_id_38_WebService_tr_3320_1st_3420"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "067_WSD_id_39_WebService_tr_4559_1st_13973"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "068_WSD_id_40_WebService_tr_4549_1st_13322"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "069_WSD_id_41_WebService_tr_4548_1st_13988"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "070_WSD_id_42_WebService_tr_2102_1st_2202"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "071_WSD_id_43_WebService_tr_3387_1st_3487"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "072_WSD_id_44_WebService_tr_1691_1st_1791"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "073_WSD_id_45_WebService_tr_3392_1st_3492"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "074_WSD_id_46_WebService_tr_990_1st_1090"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "075_WSD_id_47_WebService_tr_3296_1st_3468"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "076_WSD_id_48_WebService_tr_3821_1st_7083"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "077_WSD_id_49_WebService_tr_3310_1st_3716"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "078_WSD_id_50_WebService_tr_2449_1st_2549"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "079_WSD_id_51_WebService_tr_4559_1st_10672"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "080_WSD_id_52_WebService_tr_1538_1st_1638"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "081_WSD_id_53_WebService_tr_4559_1st_8448"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "082_WSD_id_54_WebService_tr_4437_1st_4805"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "083_WSD_id_55_WebService_tr_4599_1st_4863"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "084_WSD_id_56_WebService_tr_4559_1st_9616"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "085_WSD_id_57_WebService_tr_780_1st_880"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "086_WSD_id_58_WebService_tr_4436_1st_9529"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "087_WSD_id_59_WebService_tr_4559_1st_12600"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "088_WSD_id_60_WebService_tr_4548_1st_5596"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "089_WSD_id_61_WebService_tr_1010_1st_1110"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "090_WSD_id_62_WebService_tr_2281_1st_2381"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "091_WSD_id_63_WebService_tr_500_1st_363"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "092_WSD_id_64_WebService_tr_500_1st_118"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "093_WSD_id_65_WebService_tr_1125_1st_1225"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "094_WSD_id_66_WebService_tr_3309_1st_3914"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "095_WSD_id_67_WebService_tr_2182_1st_2282"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "096_WSD_id_68_WebService_tr_1341_1st_1441"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "097_WSD_id_69_WebService_tr_4520_1st_6465"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "098_WSD_id_70_WebService_tr_3575_1st_3675"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "099_WSD_id_71_WebService_tr_4559_1st_14411"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "100_WSD_id_72_WebService_tr_4559_1st_10254"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "101_WSD_id_73_WebService_tr_1513_1st_1613"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "102_WSD_id_74_WebService_tr_3306_1st_3639"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "103_WSD_id_75_WebService_tr_1375_1st_1475"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "104_WSD_id_76_WebService_tr_3047_1st_3147"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "105_WSD_id_77_WebService_tr_2348_1st_2448"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "106_WSD_id_78_WebService_tr_3363_1st_3463"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "107_WSD_id_79_WebService_tr_1095_1st_1195"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "108_WSD_id_80_WebService_tr_2368_1st_2468"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "109_WSD_id_81_WebService_tr_3175_1st_3275"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "110_WSD_id_82_WebService_tr_500_1st_375"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "111_WSD_id_83_WebService_tr_3934_1st_7531"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "112_WSD_id_84_WebService_tr_2442_1st_2542"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "113_WSD_id_85_WebService_tr_500_1st_335"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "114_WSD_id_86_WebService_tr_500_1st_403"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "115_WSD_id_87_WebService_tr_2252_1st_2352"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "116_WSD_id_88_WebService_tr_3934_1st_13861"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "117_WSD_id_89_WebService_tr_3251_1st_3351"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "118_WSD_id_90_WebService_tr_4559_1st_6317"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "119_WSD_id_91_WebService_tr_4559_1st_12353"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "120_WSD_id_92_WebService_tr_2329_1st_2429"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "121_WSD_id_93_WebService_tr_4559_1st_11749"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "122_WSD_id_94_WebService_tr_4559_1st_8618"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "123_WSD_id_95_WebService_tr_4559_1st_4901"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "124_WSD_id_96_WebService_tr_4559_1st_14350"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "125_WSD_id_97_WebService_tr_2217_1st_2317"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "126_WSD_id_98_WebService_tr_657_1st_757"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "127_WSD_id_99_WebService_tr_1164_1st_1264"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "128_WSD_id_100_WebService_tr_4068_1st_4168"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "129_WSD_id_101_WebService_tr_4448_1st_9592"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "130_WSD_id_102_WebService_tr_2362_1st_2462"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "131_WSD_id_103_WebService_tr_4573_1st_7021"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "132_WSD_id_104_WebService_tr_4037_1st_4137"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "133_WSD_id_105_WebService_tr_3934_1st_5937"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "134_WSD_id_106_WebService_tr_4559_1st_7990"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "135_WSD_id_107_WebService_tr_3779_1st_3879"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "136_WSD_id_108_WebService_tr_3414_1st_3514"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "137_WSD_id_109_WebService_tr_4559_1st_14404"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "138_WSD_id_110_WebService_tr_4584_1st_6039"
+    },
+    {
+      "dataset": "WSD",
+      "signal_id": "139_WSD_id_111_WebService_tr_1701_1st_1801"
+    },
+    {
+      "dataset": "artificialWithAnomaly",
+      "signal_id": "art_daily_flatmiddle"
+    },
+    {
+      "dataset": "artificialWithAnomaly",
+      "signal_id": "art_daily_jumpsdown"
+    },
+    {
+      "dataset": "artificialWithAnomaly",
+      "signal_id": "art_daily_jumpsup"
+    },
+    {
+      "dataset": "artificialWithAnomaly",
+      "signal_id": "art_daily_nojump"
+    },
+    {
+      "dataset": "artificialWithAnomaly",
+      "signal_id": "art_increase_spike_density"
+    },
+    {
+      "dataset": "artificialWithAnomaly",
+      "signal_id": "art_load_balancer_spikes"
+    },
+    {
+      "dataset": "realAWSCloudwatch",
+      "signal_id": "ec2_cpu_utilization_24ae8d"
+    },
+    {
+      "dataset": "realAWSCloudwatch",
+      "signal_id": "ec2_cpu_utilization_53ea38"
+    },
+    {
+      "dataset": "realAWSCloudwatch",
+      "signal_id": "ec2_cpu_utilization_5f5533"
+    },
+    {
+      "dataset": "realAWSCloudwatch",
+      "signal_id": "ec2_cpu_utilization_77c1ca"
+    },
+    {
+      "dataset": "realAWSCloudwatch",
+      "signal_id": "ec2_cpu_utilization_825cc2"
+    },
+    {
+      "dataset": "realAWSCloudwatch",
+      "signal_id": "ec2_cpu_utilization_ac20cd"
+    },
+    {
+      "dataset": "realAWSCloudwatch",
+      "signal_id": "ec2_cpu_utilization_c6585a"
+    },
+    {
+      "dataset": "realAWSCloudwatch",
+      "signal_id": "ec2_cpu_utilization_fe7f93"
+    },
+    {
+      "dataset": "realAWSCloudwatch",
+      "signal_id": "ec2_disk_write_bytes_1ef3de"
+    },
+    {
+      "dataset": "realAWSCloudwatch",
+      "signal_id": "ec2_disk_write_bytes_c0d644"
+    },
+    {
+      "dataset": "realAWSCloudwatch",
+      "signal_id": "ec2_network_in_257a54"
+    },
+    {
+      "dataset": "realAWSCloudwatch",
+      "signal_id": "ec2_network_in_5abac7"
+    },
+    {
+      "dataset": "realAWSCloudwatch",
+      "signal_id": "elb_request_count_8c0756"
+    },
+    {
+      "dataset": "realAWSCloudwatch",
+      "signal_id": "grok_asg_anomaly"
+    },
+    {
+      "dataset": "realAWSCloudwatch",
+      "signal_id": "iio_us-east-1_i-a2eb1cd9_NetworkIn"
+    },
+    {
+      "dataset": "realAWSCloudwatch",
+      "signal_id": "rds_cpu_utilization_cc0c53"
+    },
+    {
+      "dataset": "realAWSCloudwatch",
+      "signal_id": "rds_cpu_utilization_e47b3b"
+    },
+    {
+      "dataset": "realAdExchange",
+      "signal_id": "exchange-2_cpc_results"
+    },
+    {
+      "dataset": "realAdExchange",
+      "signal_id": "exchange-2_cpm_results"
+    },
+    {
+      "dataset": "realAdExchange",
+      "signal_id": "exchange-3_cpc_results"
+    },
+    {
+      "dataset": "realAdExchange",
+      "signal_id": "exchange-3_cpm_results"
+    },
+    {
+      "dataset": "realAdExchange",
+      "signal_id": "exchange-4_cpm_results"
+    },
+    {
+      "dataset": "realTraffic",
+      "signal_id": "TravelTime_387"
+    },
+    {
+      "dataset": "realTraffic",
+      "signal_id": "TravelTime_451"
+    },
+    {
+      "dataset": "realTraffic",
+      "signal_id": "occupancy_6005"
+    },
+    {
+      "dataset": "realTraffic",
+      "signal_id": "speed_6005"
+    },
+    {
+      "dataset": "realTraffic",
+      "signal_id": "speed_7578"
+    },
+    {
+      "dataset": "realTraffic",
+      "signal_id": "speed_t4013"
+    },
+    {
+      "dataset": "realTweets",
+      "signal_id": "Twitter_volume_AAPL"
+    },
+    {
+      "dataset": "realTweets",
+      "signal_id": "Twitter_volume_AMZN"
+    },
+    {
+      "dataset": "realTweets",
+      "signal_id": "Twitter_volume_CRM"
+    },
+    {
+      "dataset": "realTweets",
+      "signal_id": "Twitter_volume_CVS"
+    },
+    {
+      "dataset": "realTweets",
+      "signal_id": "Twitter_volume_FB"
+    },
+    {
+      "dataset": "realTweets",
+      "signal_id": "Twitter_volume_GOOG"
+    },
+    {
+      "dataset": "realTweets",
+      "signal_id": "Twitter_volume_IBM"
+    },
+    {
+      "dataset": "realTweets",
+      "signal_id": "Twitter_volume_KO"
+    },
+    {
+      "dataset": "realTweets",
+      "signal_id": "Twitter_volume_PFE"
+    },
+    {
+      "dataset": "realTweets",
+      "signal_id": "Twitter_volume_UPS"
+    }
+  ]
+}

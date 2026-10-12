@@ -1,0 +1,86 @@
+{
+  "name": "ANOMALY_SCREENING_FROZEN",
+  "schema_version": 1,
+  "scales": [
+    224,
+    448,
+    672
+  ],
+  "windowing": {
+    "step_ratio": 4.0,
+    "step_rule": "max(1, int(window_size / step_ratio))"
+  },
+  "representation": "raw_only",
+  "retrieval_mode": "raw-only",
+  "preprocessing": {
+    "standardize": true,
+    "mode": "legacy",
+    "render_mode": "direct_polyline",
+    "image_size": [
+      224,
+      224
+    ],
+    "encoder_name": "ViT-B-16",
+    "encoder_weights": "openai",
+    "dtype": "fp32"
+  },
+  "reference_selection": {
+    "key": "raw",
+    "mode": "raw-only",
+    "top_m": null,
+    "top_k": 16,
+    "validity_policy": "non_overlap",
+    "temporal_gap": 0,
+    "shortage_fallback": "retain_all_valid_without_padding",
+    "tie_breaking": "stable_input_order"
+  },
+  "reference_trim": {
+    "enabled": true,
+    "retained_count": 4,
+    "aggregation": "none",
+    "selection_distance": "1_minus_cosine_to_flattened_median_center",
+    "legacy_trim_ratio_compatibility": 0.75,
+    "shortage_behavior": "retain_min(valid_count, retained_count)"
+  },
+  "patch_matching": {
+    "method": "nearest_cosine_distance",
+    "reference_bank": "unaggregated_retained_windows",
+    "query_normalization": "l2",
+    "reference_normalization": "l2",
+    "distance": "0.5 * (1 - max_cosine_similarity)",
+    "match_scope": "every_query_patch_to_every_retained_reference_patch",
+    "reduction": "nearest_reference_patch_per_query_patch",
+    "row_wise": false
+  },
+  "map_and_stitching": {
+    "coarse_and_mid_aggregation": "harmonic_aggregation",
+    "patch_level_aggregation": "reshape",
+    "three_scale_map_fusion": "equal_mean",
+    "window_overlap_stitch": "mean_overlapping_window_vectors",
+    "column_aggregation": "top_25_percent_mean"
+  },
+  "scale_normalization": "robust_positive_z",
+  "scale_fusion": {
+    "method": "weighted_mean",
+    "weights": {
+      "224": 0.3333333333333333,
+      "448": 0.3333333333333333,
+      "672": 0.3333333333333333
+    },
+    "llm_prior": false
+  },
+  "decision": {
+    "threshold_method": "mean_plus_norm_ppf_one_minus_alpha_times_std",
+    "alpha_candidates": [
+      0.1,
+      0.01,
+      0.001
+    ],
+    "method": "mean",
+    "scope": "global",
+    "smoothing": true,
+    "sliding": false,
+    "anomaly_padding": 0,
+    "interval_merge": "contiguous"
+  }
+}
